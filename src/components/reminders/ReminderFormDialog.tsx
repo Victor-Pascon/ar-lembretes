@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -28,7 +28,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Plus } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, Plus, Info } from "lucide-react";
+import { QRCodeDisplay } from "./QRCodeDisplay";
 import type { ReminderWithLocation } from "@/hooks/useReminders";
 import type { Location } from "@/hooks/useLocations";
 
@@ -60,6 +62,7 @@ export function ReminderFormDialog({
 }: ReminderFormDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditing = !!reminder;
+  const previewQRData = useMemo(() => crypto.randomUUID(), []);
 
   const form = useForm<ReminderFormData>({
     resolver: zodResolver(reminderSchema),
@@ -102,7 +105,7 @@ export function ReminderFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className={isEditing ? "sm:max-w-[500px]" : "sm:max-w-[700px]"}>
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Editar Lembrete" : "Criar Novo Lembrete"}
@@ -111,85 +114,117 @@ export function ReminderFormDialog({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Título</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: Lembrete da Sala de Reuniões" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="message"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Mensagem AR</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Mensagem que será exibida em realidade aumentada..."
-                      className="min-h-[100px] resize-none"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="location_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Local físico</FormLabel>
-                  <div className="flex gap-2">
-                    <Select value={field.value || ""} onValueChange={field.onChange}>
+            <div className={`grid gap-6 ${!isEditing ? "grid-cols-1 md:grid-cols-2" : ""}`}>
+              {/* Coluna do Formulário */}
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Título</FormLabel>
                       <FormControl>
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Selecione um local" />
-                        </SelectTrigger>
+                        <Input placeholder="Ex: Lembrete da Sala de Reuniões" {...field} />
                       </FormControl>
-                      <SelectContent>
-                        {locations.map((location) => (
-                          <SelectItem key={location.id} value={location.id}>
-                            {location.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button type="button" variant="outline" size="icon" onClick={onCreateLocation}>
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <FormField
-              control={form.control}
-              name="is_active"
-              render={({ field }) => (
-                <FormItem className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <div>
-                    <FormLabel className="text-sm font-medium">Ativo</FormLabel>
-                    <p className="text-xs text-muted-foreground">
-                      Quando ativo, o QR Code estará funcional
-                    </p>
+                <FormField
+                  control={form.control}
+                  name="location_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Local físico</FormLabel>
+                      <div className="flex gap-2">
+                        <Select value={field.value || ""} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Selecione um local" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {locations.map((location) => (
+                              <SelectItem key={location.id} value={location.id}>
+                                {location.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button type="button" variant="outline" size="icon" onClick={onCreateLocation}>
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="message"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mensagem AR</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Mensagem que será exibida em realidade aumentada..."
+                          className="min-h-[100px] resize-none"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="is_active"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-lg border border-border p-3">
+                      <div>
+                        <FormLabel className="text-sm font-medium">Ativo</FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          Quando ativo, o QR Code estará funcional
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Coluna do Preview - apenas criação */}
+              {!isEditing && (
+                <div className="flex flex-col items-center justify-center p-6 bg-muted/30 rounded-xl border border-dashed border-border order-first md:order-last">
+                  <div className="mb-3">
+                    <QRCodeDisplay data={previewQRData} size={160} />
                   </div>
-                  <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                  </FormControl>
-                </FormItem>
+                  <p className="text-sm text-muted-foreground text-center font-medium">
+                    Preview do seu QR Code
+                  </p>
+                  <p className="text-xs text-muted-foreground/70 text-center mt-1">
+                    Seu QR Code único será gerado ao criar o lembrete
+                  </p>
+                </div>
               )}
-            />
+            </div>
+
+            {/* Mensagem de imutabilidade - apenas criação */}
+            {!isEditing && (
+              <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
+                <Info className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <AlertDescription className="text-amber-800 dark:text-amber-200 text-sm">
+                  <strong>Importante:</strong> O QR Code gerado será único e permanente. 
+                  Após criado, você poderá alterar apenas o conteúdo da mensagem, 
+                  nunca o código em si.
+                </AlertDescription>
+              </Alert>
+            )}
 
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
