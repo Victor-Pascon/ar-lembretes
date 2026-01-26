@@ -1,49 +1,58 @@
 
 
-## Tela de Personalizacao Visual Avancada de QR Code
+## Tela Publica de Realidade Aumentada
 
-### Analise do Estado Atual
+### Visao Geral
 
-O projeto ja possui um dialogo simples de personalizacao (`QRCodeCustomizerDialog.tsx`) que permite alterar cores do QR Code. A nova funcionalidade solicitada e significativamente mais avancada, permitindo:
+Transformar a pagina atual `/ar/:reminderId` (ARPreview) de uma simples visualizacao de card para uma experiencia completa de Realidade Aumentada com:
 
-- Upload de imagem base (cafeteira, parede, equipamento)
-- Posicionamento do QR Code sobre a imagem via drag-and-drop
-- Redimensionamento, rotacao e opacidade do QR Code
-- Preview em tempo real
-- Download da imagem final combinada
+1. Tela inicial com instrucoes e botao "Iniciar experiencia"
+2. Solicitacao de permissao da camera
+3. Visualizacao em tempo real da camera como background
+4. Avatar 3D sobreposto segurando uma placa com a mensagem dinamica
+5. Tratamento de erros e estados de carregamento
 
 ---
 
 ### Arquitetura da Solucao
 
 ```text
-+-------------------------------------------------------------------------+
-|                    Personalizacao Visual do QR Code                      |
-+-------------------------------------------------------------------------+
-| [Voltar]                                              [Baixar] [Salvar] |
-+-------------------------------------------------------------------------+
-|                                                                          |
-|  +-------------------------------------------+  +----------------------+ |
-|  |                                           |  | CONTROLES            | |
-|  |           CANVAS DE EDICAO                |  |                      | |
-|  |                                           |  | Tamanho              | |
-|  |    +----------------+                     |  | [=======O====]       | |
-|  |    | Imagem Base    |                     |  |                      | |
-|  |    |                |                     |  | Opacidade            | |
-|  |    |   +------+     |                     |  | [=======O====]       | |
-|  |    |   | QR   |<--- Arrastavel           |  |                      | |
-|  |    |   | Code |     Redimensionavel      |  | Rotacao              | |
-|  |    |   +------+     |                     |  | [=======O====]       | |
-|  |    |                |                     |  |                      | |
-|  |    +----------------+                     |  | Imagem Base          | |
-|  |                                           |  | [Upload] [Templates] | |
-|  +-------------------------------------------+  |                      | |
-|                                                  | +------------------+ | |
-|  +----------------------------------------------+ | | Preview Final  | | |
-|  | (i) AVISO: O QR Code e permanente.           | | |                | | |
-|  |     Apenas sua posicao visual pode mudar.    | | +------------------+ | |
-|  +----------------------------------------------+ +----------------------+ |
-+-------------------------------------------------------------------------+
++------------------------------------------------------------------+
+|                    TELA AR PUBLICA                                |
++------------------------------------------------------------------+
+|                                                                   |
+|  ESTADO 1: INICIO                                                 |
+|  +-------------------------------------------------------------+  |
+|  |                                                             |  |
+|  |     [Icone AR animado]                                      |  |
+|  |                                                             |  |
+|  |     "Voce escaneou um lembrete!"                           |  |
+|  |     "Posicione seu celular para ver                        |  |
+|  |      a mensagem em realidade aumentada"                    |  |
+|  |                                                             |  |
+|  |     [Iniciar experiencia AR]                               |  |
+|  |                                                             |  |
+|  +-------------------------------------------------------------+  |
+|                                                                   |
+|  ESTADO 2: CAMERA ATIVA                                           |
+|  +-------------------------------------------------------------+  |
+|  | +---------------------------+                               |  |
+|  | |  CAMERA (fullscreen)      |                               |  |
+|  | |                           |                               |  |
+|  | |     +-------------+       |                               |  |
+|  | |     |   AVATAR    |       |                               |  |
+|  | |     |    3D       |       |                               |  |
+|  | |     +-------------+       |                               |  |
+|  | |     |  PLACA COM  |       |                               |  |
+|  | |     |  MENSAGEM   |       |                               |  |
+|  | |     +-------------+       |                               |  |
+|  | |                           |                               |  |
+|  | +---------------------------+                               |  |
+|  |                                                             |  |
+|  |  [X Fechar]                   [i Info]                     |  |
+|  +-------------------------------------------------------------+  |
+|                                                                   |
++------------------------------------------------------------------+
 ```
 
 ---
@@ -55,222 +64,285 @@ O projeto ja possui um dialogo simples de personalizacao (`QRCodeCustomizerDialo
 ```text
 src/
   components/
-    reminders/
-      QRCodeVisualEditor.tsx       # Componente principal de edicao visual
-      QRCodeCanvas.tsx             # Canvas com drag-and-drop do QR
-      QRCodeControls.tsx           # Sliders e controles de personalizacao
-      QRCodeImageUpload.tsx        # Upload de imagem base
+    ar/
+      ARExperience.tsx           # Container principal da experiencia AR
+      ARStartScreen.tsx          # Tela inicial com instrucoes
+      ARCameraView.tsx           # View com camera + avatar 3D
+      ARMessageSign.tsx          # Placa/cartaz com mensagem
+      ARAvatarWithSign.tsx       # Avatar 3D segurando a placa
   pages/
-    QRCodeEditor.tsx               # Pagina dedicada para edicao visual
+    ARPreview.tsx                # Atualizar para usar novos componentes
+```
+
+---
+
+### Fluxo de Estados
+
+```text
+[LOADING]
+    |
+    v
+[INICIO] --> Clica "Iniciar" --> [PERMISSAO_CAMERA]
+                                        |
+                       Permitido? ------+------ Negado?
+                           |                      |
+                           v                      v
+                    [CAMERA_ATIVA]          [ERRO_CAMERA]
+                           |
+                           v
+                    [AR_EXPERIENCE]
+                    (Avatar 3D + Placa)
 ```
 
 ---
 
 ### Detalhes Tecnicos
 
-**1. Estado da Personalizacao Visual (tipo expandido):**
+**1. ARStartScreen.tsx - Tela Inicial:**
 
 ```typescript
-interface QRVisualConfig {
-  // Configuracao basica de cores (existente)
-  foreground: string;
-  background: string;
+interface ARStartScreenProps {
+  title: string;
+  location?: string;
+  onStart: () => void;
+}
+```
+
+Elementos:
+- Icone animado de AR (pulsando)
+- Titulo do lembrete
+- Local (se houver)
+- Instrucoes curtas
+- Botao "Iniciar experiencia AR"
+
+**2. ARCameraView.tsx - Camera com Overlay 3D:**
+
+Utilizara `react-webcam` (ja instalado) para captura da camera em tempo real.
+O Canvas Three.js sera renderizado em overlay transparente sobre a camera.
+
+```typescript
+interface ARCameraViewProps {
+  message: string;
+  avatarConfig: AvatarConfig;
+  onClose: () => void;
+}
+```
+
+**3. ARAvatarWithSign.tsx - Avatar 3D com Placa:**
+
+Reutiliza o componente `AvatarModel` existente, adicionando:
+- Bracos estendidos segurando uma placa
+- Placa 3D com texto renderizado via `Text` do drei
+- Animacao suave de flutuacao
+
+```typescript
+interface ARAvatarWithSignProps {
+  config: AvatarConfig;
+  message: string;
+}
+```
+
+**4. ARMessageSign.tsx - Placa de Mensagem 3D:**
+
+```typescript
+interface ARMessageSignProps {
+  message: string;
+  maxWidth?: number;
+}
+```
+
+Componente Three.js com:
+- Geometria de placa (box achatado ou plane)
+- Textura de texto usando `Text` do @react-three/drei
+- Borda e sombra para destaque
+
+---
+
+### Integracao com Camera
+
+A camera sera implementada usando `react-webcam` (ja instalado no projeto).
+
+```typescript
+// ARCameraView.tsx
+<div className="fixed inset-0">
+  {/* Camera como background */}
+  <Webcam
+    className="absolute inset-0 w-full h-full object-cover"
+    videoConstraints={{ facingMode: "environment" }}
+  />
   
-  // Nova configuracao visual
-  position: { x: number; y: number };  // Posicao do QR na imagem
-  size: number;                         // Tamanho em pixels
-  rotation: number;                     // Graus (0-360)
-  opacity: number;                      // 0-1
-  baseImageUrl?: string;                // URL da imagem base (storage)
-}
-```
-
-**2. Canvas de Edicao (QRCodeCanvas.tsx):**
-
-- Utiliza HTML Canvas API para renderizacao
-- Implementa drag-and-drop nativo com mouse events
-- Handles de redimensionamento nos cantos do QR
-- Preview em tempo real durante manipulacao
-
-**3. Controles de Personalizacao (QRCodeControls.tsx):**
-
-- Slider para tamanho (50px - 300px)
-- Slider para opacidade (0% - 100%)
-- Slider para rotacao (0 - 360 graus)
-- Botao de upload com preview
-- Templates pre-definidos de imagens
-
-**4. Geracao da Imagem Final:**
-
-- Combina imagem base + QR Code no canvas
-- Exporta como PNG/JPEG para download
-- Salva configuracao visual no banco (qr_code_style)
-
----
-
-### Integracao com Storage
-
-Para armazenar imagens base personalizadas, utilizaremos o bucket existente `avatars` ou criaremos um novo bucket `qr-backgrounds`:
-
-```sql
--- Criar bucket para backgrounds de QR (se necessario)
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('qr-backgrounds', 'qr-backgrounds', true);
+  {/* Canvas 3D em overlay */}
+  <div className="absolute inset-0">
+    <Canvas gl={{ alpha: true }}>
+      <ARAvatarWithSign config={avatarConfig} message={message} />
+    </Canvas>
+  </div>
+</div>
 ```
 
 ---
 
-### Fluxo de Dados
+### Tratamento de Erros
 
-```text
-1. Usuario abre editor visual para um lembrete
-      |
-2. Carrega configuracao existente (qr_code_style)
-      |
-3. Usuario faz upload de imagem base
-      |
-      +--> Imagem salva no Storage
-      |
-4. Usuario arrasta e posiciona QR Code
-      |
-5. Usuario ajusta tamanho/opacidade/rotacao
-      |
-6. Preview atualiza em tempo real
-      |
-7. Usuario clica "Salvar"
-      |
-      +--> Atualiza qr_code_style no banco
-      |
-8. Usuario clica "Baixar"
-      |
-      +--> Canvas exporta imagem PNG
-```
+Estados de erro a cobrir:
+1. Lembrete nao encontrado ou inativo
+2. Camera nao disponivel
+3. Permissao de camera negada
+4. Erro ao carregar dados
 
----
-
-### Rotas Atualizadas
-
-```tsx
-// App.tsx
-<Route path="/qr-editor/:reminderId" element={<QRCodeEditor />} />
-```
-
----
-
-### Componentes em Detalhe
-
-**QRCodeVisualEditor.tsx (Componente Principal):**
-
-```typescript
-interface QRCodeVisualEditorProps {
-  reminder: ReminderWithLocation;
-  onSave: (config: QRVisualConfig) => Promise<void>;
-  onBack: () => void;
-}
-
-// Estados:
-// - config: QRVisualConfig (posicao, tamanho, rotacao, opacidade)
-// - baseImage: File | null (imagem carregada)
-// - isDragging: boolean (para feedback visual)
-// - isSaving: boolean (loading state)
-```
-
-**QRCodeCanvas.tsx (Canvas Interativo):**
-
-Funcionalidades:
-- `handleMouseDown`: Inicia arrasto do QR
-- `handleMouseMove`: Atualiza posicao durante arrasto
-- `handleMouseUp`: Finaliza arrasto
-- `handleResize`: Redimensiona via handles
-- `drawCanvas`: Renderiza imagem base + QR Code
-- `exportAsImage`: Gera PNG para download
-
-**QRCodeControls.tsx (Painel de Controles):**
-
-```typescript
-interface QRCodeControlsProps {
-  config: QRVisualConfig;
-  onChange: (config: Partial<QRVisualConfig>) => void;
-  onUploadImage: (file: File) => void;
-  onDownload: () => void;
-}
-```
-
----
-
-### Templates Pre-definidos
-
-Lista de templates de imagem para facilitar uso:
-
-```typescript
-const templates = [
-  { name: "Cafeteira", url: "/templates/coffee-machine.png" },
-  { name: "Parede Branca", url: "/templates/white-wall.png" },
-  { name: "Mesa de Trabalho", url: "/templates/desk.png" },
-  { name: "Porta", url: "/templates/door.png" },
-  { name: "Equipamento", url: "/templates/equipment.png" },
-];
-```
-
----
-
-### Mensagem de Aviso
-
-Componente Alert informando:
-- O QR Code e unico e permanente
-- Apenas a aparencia visual pode ser alterada
-- O codigo em si nunca muda
+Cada estado tera uma UI dedicada com:
+- Icone visual
+- Mensagem explicativa
+- Botao de acao (tentar novamente ou voltar)
 
 ---
 
 ### Responsividade
 
-**Desktop (>1024px):**
-- Layout com canvas a esquerda, controles a direita
-- Controles em painel lateral fixo
+A experiencia e otimizada para mobile:
 
-**Tablet (768-1024px):**
-- Layout de duas colunas
-- Controles abaixo do canvas
+- Layout fullscreen em dispositivos moveis
+- Camera traseira como padrao (`facingMode: "environment"`)
+- Touch para interagir com o avatar
+- Botoes grandes e acessiveis
+- Orientacao portrait/landscape suportada
 
-**Mobile (<768px):**
-- Layout empilhado
-- Canvas em tela cheia
-- Controles em bottom sheet expansivel
-- Gestos de toque para arrastar e redimensionar
+---
+
+### Carregamento do Perfil do Criador
+
+Atualmente o ARPreview busca o perfil de forma separada. Para a experiencia AR:
+
+1. Buscar o reminder pelo `qr_code_data`
+2. Usar o `user_id` do reminder para buscar o perfil do criador
+3. Extrair `avatar_config` do perfil para renderizar o avatar 3D
+
+```typescript
+// Busca correta do perfil do criador
+const { data: profileData } = await supabase
+  .from("profiles")
+  .select("name, avatar_url, avatar_config")
+  .eq("user_id", reminder.user_id)
+  .single();
+```
+
+---
+
+### Configuracao Padrao do Avatar
+
+Se o criador nao tiver avatar configurado, usar um avatar padrao:
+
+```typescript
+const defaultAvatarConfig: AvatarConfig = {
+  skinColor: "#e0b8a0",
+  hairColor: "#3d2314",
+  eyeColor: "#4a6741",
+  hairStyle: "short",
+  hasGlasses: false,
+};
+```
+
+---
+
+### Componente Principal Atualizado (ARPreview.tsx)
+
+```typescript
+// Estados da experiencia
+type ARState = "loading" | "start" | "camera" | "error";
+
+const [arState, setArState] = useState<ARState>("loading");
+
+return (
+  <>
+    {arState === "loading" && <LoadingScreen />}
+    {arState === "start" && (
+      <ARStartScreen 
+        title={reminder.title} 
+        location={reminder.locations?.name}
+        onStart={() => setArState("camera")} 
+      />
+    )}
+    {arState === "camera" && (
+      <ARCameraView
+        message={reminder.message}
+        avatarConfig={avatarConfig}
+        onClose={() => navigate("/")}
+      />
+    )}
+    {arState === "error" && <ErrorScreen error={error} />}
+  </>
+);
+```
+
+---
+
+### Animacoes e UX
+
+1. **Tela inicial:**
+   - Icone pulsando
+   - Fade in dos elementos
+   - Botao com hover/tap feedback
+
+2. **Transicao para camera:**
+   - Fade out da tela inicial
+   - Fade in da camera
+
+3. **Avatar 3D:**
+   - Animacao de flutuacao suave (floating)
+   - Placa balancando levemente
+   - Rotacao automatica leve do avatar
+
+4. **Controles:**
+   - Botao de fechar no canto
+   - Botao de informacoes do lembrete
+
+---
+
+### Alternativa WebXR
+
+Para dispositivos que suportam WebXR (navegadores modernos em Android), podemos oferecer uma experiencia ainda mais imersiva usando `@react-three/xr`. Porem, devido a limitacoes de suporte (especialmente iOS), a implementacao inicial usara a abordagem de camera overlay, que funciona em todos os dispositivos.
+
+No futuro, pode-se adicionar deteccao de suporte WebXR:
+
+```typescript
+const supportsWebXR = 'xr' in navigator;
+
+if (supportsWebXR && isAndroid) {
+  // Usar @react-three/xr para AR real
+} else {
+  // Usar camera overlay com Three.js
+}
+```
 
 ---
 
 ### Ordem de Implementacao
 
-1. Criar tipo `QRVisualConfig` e atualizar hook `useReminders`
-2. Criar componente `QRCodeControls.tsx` com sliders
-3. Criar componente `QRCodeCanvas.tsx` com drag-and-drop
-4. Criar componente `QRCodeImageUpload.tsx`
-5. Criar componente principal `QRCodeVisualEditor.tsx`
-6. Criar pagina `QRCodeEditor.tsx`
-7. Atualizar rotas em `App.tsx`
-8. Atualizar `ReminderCard.tsx` para linkar ao editor
-9. Adicionar logica de download de imagem
-10. Testar responsividade
+1. Criar componente `ARStartScreen.tsx` com UI de boas-vindas
+2. Criar componente `ARMessageSign.tsx` para a placa 3D
+3. Criar componente `ARAvatarWithSign.tsx` integrando avatar + placa
+4. Criar componente `ARCameraView.tsx` com camera + overlay 3D
+5. Criar componente `ARExperience.tsx` como orquestrador
+6. Atualizar `ARPreview.tsx` para usar a nova arquitetura
+7. Adicionar tratamento de erros e estados
+8. Testar em dispositivos moveis
 
 ---
 
 ### Dependencias Necessarias
 
-O projeto ja possui todas as dependencias necessarias:
-- `qrcode.react` para geracao do QR Code
-- Componentes UI (Slider, Button, etc.)
-- Supabase para storage
+Todas as dependencias ja estao instaladas:
+- `react-webcam` - Captura de camera
+- `@react-three/fiber` - Renderizacao 3D
+- `@react-three/drei` - Helpers como Text, OrbitControls
 
 ---
 
-### Consideracoes de UX
+### Consideracoes de Performance
 
-- Cursor muda para "move" ao passar sobre o QR
-- Bordas pontilhadas ao redor do QR selecionado
-- Handles visuais nos cantos para redimensionamento
-- Toast de sucesso ao salvar
-- Confirmacao ao sair sem salvar
-- Loading state durante upload de imagem
+- Usar `React.memo` nos componentes 3D
+- Limitar FPS do canvas se necessario
+- Compactar texturas e geometrias
+- Lazy loading dos componentes AR
+- Desmontar canvas ao sair da experiencia
 
