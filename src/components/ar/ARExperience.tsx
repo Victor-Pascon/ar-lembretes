@@ -19,7 +19,7 @@ interface ARExperienceProps {
 type ARState = "start" | "camera";
 
 const ARExperience = ({ reminder, avatarConfig, onClose }: ARExperienceProps) => {
-  const [arState, setArState] = useState<ARState>("start");
+  const [arState, setArState] = useState<ARState>("camera");
 
   const handleStart = () => {
     setArState("camera");
