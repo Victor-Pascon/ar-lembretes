@@ -1,10 +1,12 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Loader2, QrCode } from "lucide-react";
 import ARExperience from "@/components/ar/ARExperience";
+import ViewModeSelector from "@/components/ar/ViewModeSelector";
+import CardView from "@/components/ar/CardView";
 import { AvatarConfig } from "@/components/avatar/AvatarModel";
 
 interface ReminderData {
@@ -27,6 +29,8 @@ interface ProfileData {
   avatar_config: AvatarConfig | null;
 }
 
+type ViewMode = "loading" | "error" | "select" | "card" | "ar";
+
 const defaultAvatarConfig: AvatarConfig = {
   skinColor: "#e0b8a0",
   hairColor: "#3d2314",
@@ -40,14 +44,14 @@ export default function ARPreview() {
   const navigate = useNavigate();
   const [reminder, setReminder] = useState<ReminderData | null>(null);
   const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>("loading");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchReminder() {
       if (!reminderId) {
         setError("ID do lembrete não fornecido");
-        setIsLoading(false);
+        setViewMode("error");
         return;
       }
 
@@ -76,7 +80,7 @@ export default function ARPreview() {
 
         if (!reminderData) {
           setError("Lembrete não encontrado ou inativo");
-          setIsLoading(false);
+          setViewMode("error");
           return;
         }
 
@@ -117,11 +121,13 @@ export default function ARPreview() {
             avatar_config: parsedAvatarConfig,
           });
         }
+
+        // Data loaded successfully, show selection screen
+        setViewMode("select");
       } catch (err) {
         setError("Erro ao carregar o lembrete");
+        setViewMode("error");
         console.error(err);
-      } finally {
-        setIsLoading(false);
       }
     }
 
@@ -132,18 +138,20 @@ export default function ARPreview() {
     navigate("/");
   };
 
-  if (isLoading) {
+  // Loading state
+  if (viewMode === "loading") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary/20 via-background to-accent/20 flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground">Carregando experiência AR...</p>
+          <p className="text-muted-foreground">Carregando experiência...</p>
         </div>
       </div>
     );
   }
 
-  if (error || !reminder) {
+  // Error state
+  if (viewMode === "error" || !reminder) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary/20 via-background to-accent/20 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
@@ -169,6 +177,33 @@ export default function ARPreview() {
   // Get avatar config from profile or use default
   const avatarConfig: AvatarConfig = profile?.avatar_config || defaultAvatarConfig;
 
+  // Selection screen
+  if (viewMode === "select") {
+    return (
+      <ViewModeSelector
+        title={reminder.title}
+        location={reminder.locations?.name}
+        onSelectCard={() => setViewMode("card")}
+        onSelectAR={() => setViewMode("ar")}
+      />
+    );
+  }
+
+  // Card view
+  if (viewMode === "card") {
+    return (
+      <CardView
+        title={reminder.title}
+        message={reminder.message}
+        location={reminder.locations?.name}
+        creatorName={profile?.name}
+        onClose={handleClose}
+        onSwitchToAR={() => setViewMode("ar")}
+      />
+    );
+  }
+
+  // AR Experience
   return (
     <ARExperience
       reminder={{
