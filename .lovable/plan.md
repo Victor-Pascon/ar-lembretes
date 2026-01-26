@@ -1,157 +1,276 @@
 
 
-## Plano de Melhorias para Criacao de Lembretes com QR Code
+## Tela de Personalizacao Visual Avancada de QR Code
 
-### Objetivo
+### Analise do Estado Atual
 
-Aprimorar a experiencia de criacao de lembretes adicionando:
-1. Preview em tempo real do QR Code durante a criacao
-2. Mensagem informativa sobre a imutabilidade do QR Code
-3. Layout mais amplo e visual melhorado
+O projeto ja possui um dialogo simples de personalizacao (`QRCodeCustomizerDialog.tsx`) que permite alterar cores do QR Code. A nova funcionalidade solicitada e significativamente mais avancada, permitindo:
+
+- Upload de imagem base (cafeteira, parede, equipamento)
+- Posicionamento do QR Code sobre a imagem via drag-and-drop
+- Redimensionamento, rotacao e opacidade do QR Code
+- Preview em tempo real
+- Download da imagem final combinada
 
 ---
 
-### Visao Geral das Mudancas
-
-O formulario atual (`ReminderFormDialog.tsx`) sera expandido para incluir uma secao lateral de preview do QR Code e uma mensagem destacada sobre a permanencia do codigo.
+### Arquitetura da Solucao
 
 ```text
-+----------------------------------------------------------+
-|                  Criar Novo Lembrete                      |
-+----------------------------------------------------------+
-|                                                           |
-|  +----------------------+    +-----------------------+    |
-|  | FORMULARIO           |    | PREVIEW QR CODE       |    |
-|  |                      |    |                       |    |
-|  | Nome do lembrete     |    |     +----------+      |    |
-|  | [________________]   |    |     |   QR     |      |    |
-|  |                      |    |     |  Code    |      |    |
-|  | Local fisico         |    |     | Preview  |      |    |
-|  | [______v______][+]   |    |     +----------+      |    |
-|  |                      |    |                       |    |
-|  | Mensagem AR          |    |  Seu QR Code unico    |    |
-|  | [                ]   |    |  sera gerado aqui     |    |
-|  | [________________]   |    |                       |    |
-|  |                      |    +-----------------------+    |
-|  | [Switch] Ativo       |                                 |
-|  +----------------------+                                 |
-|                                                           |
-|  +------------------------------------------------------+ |
-|  | (i) IMPORTANTE: O QR Code gerado sera UNICO e        | |
-|  |     PERMANENTE. Apos criado, voce podera alterar     | |
-|  |     apenas a mensagem exibida, nunca o codigo.       | |
-|  +------------------------------------------------------+ |
-|                                                           |
-|              [Cancelar]  [Criar Lembrete]                 |
-+----------------------------------------------------------+
++-------------------------------------------------------------------------+
+|                    Personalizacao Visual do QR Code                      |
++-------------------------------------------------------------------------+
+| [Voltar]                                              [Baixar] [Salvar] |
++-------------------------------------------------------------------------+
+|                                                                          |
+|  +-------------------------------------------+  +----------------------+ |
+|  |                                           |  | CONTROLES            | |
+|  |           CANVAS DE EDICAO                |  |                      | |
+|  |                                           |  | Tamanho              | |
+|  |    +----------------+                     |  | [=======O====]       | |
+|  |    | Imagem Base    |                     |  |                      | |
+|  |    |                |                     |  | Opacidade            | |
+|  |    |   +------+     |                     |  | [=======O====]       | |
+|  |    |   | QR   |<--- Arrastavel           |  |                      | |
+|  |    |   | Code |     Redimensionavel      |  | Rotacao              | |
+|  |    |   +------+     |                     |  | [=======O====]       | |
+|  |    |                |                     |  |                      | |
+|  |    +----------------+                     |  | Imagem Base          | |
+|  |                                           |  | [Upload] [Templates] | |
+|  +-------------------------------------------+  |                      | |
+|                                                  | +------------------+ | |
+|  +----------------------------------------------+ | | Preview Final  | | |
+|  | (i) AVISO: O QR Code e permanente.           | | |                | | |
+|  |     Apenas sua posicao visual pode mudar.    | | +------------------+ | |
+|  +----------------------------------------------+ +----------------------+ |
++-------------------------------------------------------------------------+
 ```
 
 ---
 
-### Arquivos a Modificar
+### Estrutura de Arquivos
 
-**1. `src/components/reminders/ReminderFormDialog.tsx`**
+**Novos arquivos a criar:**
 
-Principais alteracoes:
-- Expandir largura do dialog para `sm:max-w-[700px]`
-- Adicionar layout de duas colunas (formulario + preview)
-- Integrar componente `QRCodeDisplay` com preview placeholder
-- Adicionar mensagem informativa sobre imutabilidade
-- Mostrar preview apenas no modo de criacao (nao edicao)
+```text
+src/
+  components/
+    reminders/
+      QRCodeVisualEditor.tsx       # Componente principal de edicao visual
+      QRCodeCanvas.tsx             # Canvas com drag-and-drop do QR
+      QRCodeControls.tsx           # Sliders e controles de personalizacao
+      QRCodeImageUpload.tsx        # Upload de imagem base
+  pages/
+    QRCodeEditor.tsx               # Pagina dedicada para edicao visual
+```
 
 ---
 
 ### Detalhes Tecnicos
 
-**Preview do QR Code:**
-- Gerar um UUID temporario para simular o preview
-- Usar `useMemo` para manter o UUID consistente durante a sessao
-- Mostrar QR Code com estilo padrao (roxo/branco)
-- Texto explicativo abaixo: "Seu QR Code unico sera gerado ao criar o lembrete"
+**1. Estado da Personalizacao Visual (tipo expandido):**
 
-**Mensagem Informativa:**
-- Usar componente `Alert` com variante customizada
-- Icone de informacao (Info ou Lock)
-- Estilo destacado com borda e fundo em tons de amarelo/ambar ou azul informativo
-- Texto claro sobre a imutabilidade do QR Code
+```typescript
+interface QRVisualConfig {
+  // Configuracao basica de cores (existente)
+  foreground: string;
+  background: string;
+  
+  // Nova configuracao visual
+  position: { x: number; y: number };  // Posicao do QR na imagem
+  size: number;                         // Tamanho em pixels
+  rotation: number;                     // Graus (0-360)
+  opacity: number;                      // 0-1
+  baseImageUrl?: string;                // URL da imagem base (storage)
+}
+```
 
-**Responsividade:**
-- Desktop: Layout de duas colunas
-- Mobile: Layout empilhado (preview acima do formulario)
+**2. Canvas de Edicao (QRCodeCanvas.tsx):**
+
+- Utiliza HTML Canvas API para renderizacao
+- Implementa drag-and-drop nativo com mouse events
+- Handles de redimensionamento nos cantos do QR
+- Preview em tempo real durante manipulacao
+
+**3. Controles de Personalizacao (QRCodeControls.tsx):**
+
+- Slider para tamanho (50px - 300px)
+- Slider para opacidade (0% - 100%)
+- Slider para rotacao (0 - 360 graus)
+- Botao de upload com preview
+- Templates pre-definidos de imagens
+
+**4. Geracao da Imagem Final:**
+
+- Combina imagem base + QR Code no canvas
+- Exporta como PNG/JPEG para download
+- Salva configuracao visual no banco (qr_code_style)
 
 ---
 
-### Codigo das Alteracoes
+### Integracao com Storage
 
-**ReminderFormDialog.tsx - Estrutura Atualizada:**
+Para armazenar imagens base personalizadas, utilizaremos o bucket existente `avatars` ou criaremos um novo bucket `qr-backgrounds`:
 
-```typescript
-// Novos imports
-import { useMemo } from "react";
-import { Info } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { QRCodeDisplay } from "./QRCodeDisplay";
-
-// Dentro do componente:
-const previewQRData = useMemo(() => crypto.randomUUID(), []);
-
-// No JSX - Dialog expandido:
-<DialogContent className="sm:max-w-[700px]">
-  {/* Header */}
-  
-  {/* Layout duas colunas */}
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-    {/* Coluna do Formulario */}
-    <div className="space-y-4">
-      {/* Campos existentes */}
-    </div>
-    
-    {/* Coluna do Preview - apenas criacao */}
-    {!isEditing && (
-      <div className="flex flex-col items-center justify-center p-6 bg-muted/30 rounded-xl border border-dashed">
-        <QRCodeDisplay data={previewQRData} size={160} />
-        <p className="text-sm text-muted-foreground mt-4 text-center">
-          Preview do seu QR Code
-        </p>
-      </div>
-    )}
-  </div>
-  
-  {/* Mensagem de imutabilidade - apenas criacao */}
-  {!isEditing && (
-    <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
-      <Info className="h-4 w-4 text-amber-600" />
-      <AlertDescription className="text-amber-800 dark:text-amber-200">
-        <strong>Importante:</strong> O QR Code gerado sera unico e permanente. 
-        Apos criado, voce podera alterar apenas o conteudo da mensagem, 
-        nunca o codigo em si.
-      </AlertDescription>
-    </Alert>
-  )}
-  
-  {/* Footer com botoes */}
-</DialogContent>
+```sql
+-- Criar bucket para backgrounds de QR (se necessario)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('qr-backgrounds', 'qr-backgrounds', true);
 ```
 
 ---
 
-### Fluxo de Experiencia do Usuario
+### Fluxo de Dados
 
-1. Usuario clica em "Criar novo lembrete"
-2. Dialog abre com formulario a esquerda e preview do QR a direita
-3. QR Code de preview e exibido imediatamente (UUID temporario)
-4. Mensagem amarela destaca a importancia da permanencia do QR
-5. Usuario preenche campos e clica em "Criar lembrete"
-6. QR Code real e gerado e salvo no banco
-7. Toast de sucesso confirma a criacao
+```text
+1. Usuario abre editor visual para um lembrete
+      |
+2. Carrega configuracao existente (qr_code_style)
+      |
+3. Usuario faz upload de imagem base
+      |
+      +--> Imagem salva no Storage
+      |
+4. Usuario arrasta e posiciona QR Code
+      |
+5. Usuario ajusta tamanho/opacidade/rotacao
+      |
+6. Preview atualiza em tempo real
+      |
+7. Usuario clica "Salvar"
+      |
+      +--> Atualiza qr_code_style no banco
+      |
+8. Usuario clica "Baixar"
+      |
+      +--> Canvas exporta imagem PNG
+```
 
 ---
 
-### Vantagens da Implementacao
+### Rotas Atualizadas
 
-- **Clareza:** Usuario visualiza o QR Code antes de criar
-- **Transparencia:** Mensagem informativa evita confusao futura
-- **Consistencia:** Mantem o estilo visual do projeto
-- **Simplicidade:** Alteracao minima em um unico arquivo
-- **Responsividade:** Funciona bem em desktop e mobile
+```tsx
+// App.tsx
+<Route path="/qr-editor/:reminderId" element={<QRCodeEditor />} />
+```
+
+---
+
+### Componentes em Detalhe
+
+**QRCodeVisualEditor.tsx (Componente Principal):**
+
+```typescript
+interface QRCodeVisualEditorProps {
+  reminder: ReminderWithLocation;
+  onSave: (config: QRVisualConfig) => Promise<void>;
+  onBack: () => void;
+}
+
+// Estados:
+// - config: QRVisualConfig (posicao, tamanho, rotacao, opacidade)
+// - baseImage: File | null (imagem carregada)
+// - isDragging: boolean (para feedback visual)
+// - isSaving: boolean (loading state)
+```
+
+**QRCodeCanvas.tsx (Canvas Interativo):**
+
+Funcionalidades:
+- `handleMouseDown`: Inicia arrasto do QR
+- `handleMouseMove`: Atualiza posicao durante arrasto
+- `handleMouseUp`: Finaliza arrasto
+- `handleResize`: Redimensiona via handles
+- `drawCanvas`: Renderiza imagem base + QR Code
+- `exportAsImage`: Gera PNG para download
+
+**QRCodeControls.tsx (Painel de Controles):**
+
+```typescript
+interface QRCodeControlsProps {
+  config: QRVisualConfig;
+  onChange: (config: Partial<QRVisualConfig>) => void;
+  onUploadImage: (file: File) => void;
+  onDownload: () => void;
+}
+```
+
+---
+
+### Templates Pre-definidos
+
+Lista de templates de imagem para facilitar uso:
+
+```typescript
+const templates = [
+  { name: "Cafeteira", url: "/templates/coffee-machine.png" },
+  { name: "Parede Branca", url: "/templates/white-wall.png" },
+  { name: "Mesa de Trabalho", url: "/templates/desk.png" },
+  { name: "Porta", url: "/templates/door.png" },
+  { name: "Equipamento", url: "/templates/equipment.png" },
+];
+```
+
+---
+
+### Mensagem de Aviso
+
+Componente Alert informando:
+- O QR Code e unico e permanente
+- Apenas a aparencia visual pode ser alterada
+- O codigo em si nunca muda
+
+---
+
+### Responsividade
+
+**Desktop (>1024px):**
+- Layout com canvas a esquerda, controles a direita
+- Controles em painel lateral fixo
+
+**Tablet (768-1024px):**
+- Layout de duas colunas
+- Controles abaixo do canvas
+
+**Mobile (<768px):**
+- Layout empilhado
+- Canvas em tela cheia
+- Controles em bottom sheet expansivel
+- Gestos de toque para arrastar e redimensionar
+
+---
+
+### Ordem de Implementacao
+
+1. Criar tipo `QRVisualConfig` e atualizar hook `useReminders`
+2. Criar componente `QRCodeControls.tsx` com sliders
+3. Criar componente `QRCodeCanvas.tsx` com drag-and-drop
+4. Criar componente `QRCodeImageUpload.tsx`
+5. Criar componente principal `QRCodeVisualEditor.tsx`
+6. Criar pagina `QRCodeEditor.tsx`
+7. Atualizar rotas em `App.tsx`
+8. Atualizar `ReminderCard.tsx` para linkar ao editor
+9. Adicionar logica de download de imagem
+10. Testar responsividade
+
+---
+
+### Dependencias Necessarias
+
+O projeto ja possui todas as dependencias necessarias:
+- `qrcode.react` para geracao do QR Code
+- Componentes UI (Slider, Button, etc.)
+- Supabase para storage
+
+---
+
+### Consideracoes de UX
+
+- Cursor muda para "move" ao passar sobre o QR
+- Bordas pontilhadas ao redor do QR selecionado
+- Handles visuais nos cantos para redimensionamento
+- Toast de sucesso ao salvar
+- Confirmacao ao sair sem salvar
+- Loading state durante upload de imagem
 
