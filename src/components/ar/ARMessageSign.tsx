@@ -55,8 +55,6 @@ const ARMessageSign = ({ message, maxWidth = 2.5 }: ARMessageSignProps) => {
         anchorX="center"
         anchorY="middle"
         color="#1a1a2e"
-        font="/fonts/Inter-Bold.woff"
-        outlineWidth={0}
       >
         {message}
       </Text>
