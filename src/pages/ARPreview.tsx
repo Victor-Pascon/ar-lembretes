@@ -3,7 +3,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, ArrowLeft, MapPin, QrCode } from "lucide-react";
+import { Loader2, QrCode } from "lucide-react";
+import ARExperience from "@/components/ar/ARExperience";
+import { AvatarConfig } from "@/components/avatar/AvatarModel";
 
 interface ReminderData {
   id: string;
@@ -12,21 +14,32 @@ interface ReminderData {
   qr_code_data: string;
   is_active: boolean;
   ar_config: unknown;
+  user_id: string;
   locations?: {
     name: string;
     address: string | null;
   } | null;
-  profiles?: {
-    name: string;
-    avatar_url: string | null;
-    avatar_config: unknown;
-  } | null;
 }
+
+interface ProfileData {
+  name: string;
+  avatar_url: string | null;
+  avatar_config: AvatarConfig | null;
+}
+
+const defaultAvatarConfig: AvatarConfig = {
+  skinColor: "#e0b8a0",
+  hairColor: "#3d2314",
+  eyeColor: "#4a6741",
+  hairStyle: "short",
+  hasGlasses: false,
+};
 
 export default function ARPreview() {
   const { reminderId } = useParams();
   const navigate = useNavigate();
   const [reminder, setReminder] = useState<ReminderData | null>(null);
+  const [profile, setProfile] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +52,8 @@ export default function ARPreview() {
       }
 
       try {
-        const { data, error } = await supabase
+        // Fetch reminder by qr_code_data
+        const { data: reminderData, error: reminderError } = await supabase
           .from("reminders")
           .select(`
             id,
@@ -48,6 +62,7 @@ export default function ARPreview() {
             qr_code_data,
             is_active,
             ar_config,
+            user_id,
             locations (
               name,
               address
@@ -57,25 +72,51 @@ export default function ARPreview() {
           .eq("is_active", true)
           .maybeSingle();
 
-        if (error) throw error;
+        if (reminderError) throw reminderError;
 
-        if (!data) {
+        if (!reminderData) {
           setError("Lembrete não encontrado ou inativo");
           setIsLoading(false);
           return;
         }
 
-        // Fetch profile separately if needed
-        const { data: profileData } = await supabase
+        setReminder(reminderData);
+
+        // Fetch creator's profile using the reminder's user_id
+        const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("name, avatar_url, avatar_config")
-          .limit(1)
+          .eq("user_id", reminderData.user_id)
           .maybeSingle();
 
-        setReminder({
-          ...data,
-          profiles: profileData,
-        });
+        if (!profileError && profileData) {
+          // Parse avatar_config safely
+          let parsedAvatarConfig: AvatarConfig | null = null;
+          if (profileData.avatar_config && typeof profileData.avatar_config === 'object') {
+            const config = profileData.avatar_config as Record<string, unknown>;
+            if (
+              typeof config.skinColor === 'string' &&
+              typeof config.hairColor === 'string' &&
+              typeof config.eyeColor === 'string' &&
+              typeof config.hairStyle === 'string' &&
+              typeof config.hasGlasses === 'boolean'
+            ) {
+              parsedAvatarConfig = {
+                skinColor: config.skinColor,
+                hairColor: config.hairColor,
+                eyeColor: config.eyeColor,
+                hairStyle: config.hairStyle as "short" | "medium" | "long" | "bald",
+                hasGlasses: config.hasGlasses,
+              };
+            }
+          }
+          
+          setProfile({
+            name: profileData.name,
+            avatar_url: profileData.avatar_url,
+            avatar_config: parsedAvatarConfig,
+          });
+        }
       } catch (err) {
         setError("Erro ao carregar o lembrete");
         console.error(err);
@@ -87,12 +128,16 @@ export default function ARPreview() {
     fetchReminder();
   }, [reminderId]);
 
+  const handleClose = () => {
+    navigate("/");
+  };
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-auth-gradient flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-primary/20 via-background to-accent/20 flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-          <p className="text-auth-muted">Carregando experiência AR...</p>
+          <p className="text-muted-foreground">Carregando experiência AR...</p>
         </div>
       </div>
     );
@@ -100,7 +145,7 @@ export default function ARPreview() {
 
   if (error || !reminder) {
     return (
-      <div className="min-h-screen bg-auth-gradient flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-primary/20 via-background to-accent/20 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center space-y-4">
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
@@ -113,7 +158,6 @@ export default function ARPreview() {
               Este QR Code pode estar inativo ou o lembrete foi removido.
             </p>
             <Button onClick={() => navigate("/")} variant="outline">
-              <ArrowLeft className="w-4 h-4 mr-2" />
               Voltar ao início
             </Button>
           </CardContent>
@@ -122,70 +166,19 @@ export default function ARPreview() {
     );
   }
 
+  // Get avatar config from profile or use default
+  const avatarConfig: AvatarConfig = profile?.avatar_config || defaultAvatarConfig;
+
   return (
-    <div className="min-h-screen bg-auth-gradient flex items-center justify-center p-4">
-      <Card className="w-full max-w-lg overflow-hidden">
-        {/* AR Simulation Header */}
-        <div className="bg-gradient-to-r from-primary to-accent p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-primary-foreground/20 rounded-xl flex items-center justify-center">
-              <QrCode className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <div className="text-primary-foreground">
-              <p className="text-xs opacity-75">Experiência AR</p>
-              <h1 className="font-bold text-lg">{reminder.title}</h1>
-            </div>
-          </div>
-        </div>
-
-        <CardContent className="p-6 space-y-6">
-          {/* Location */}
-          {reminder.locations && (
-            <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-              <MapPin className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium text-foreground">{reminder.locations.name}</p>
-                {reminder.locations.address && (
-                  <p className="text-sm text-muted-foreground">{reminder.locations.address}</p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Message */}
-          <div className="space-y-2">
-            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-              Mensagem
-            </h2>
-            <div className="p-4 bg-muted/30 rounded-xl border border-border">
-              <p className="text-foreground whitespace-pre-wrap">{reminder.message}</p>
-            </div>
-          </div>
-
-          {/* Avatar placeholder */}
-          {reminder.profiles && (
-            <div className="flex items-center gap-3 pt-4 border-t border-border">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <span className="text-primary-foreground font-medium">
-                  {reminder.profiles.name?.charAt(0).toUpperCase() || "A"}
-                </span>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Criado por</p>
-                <p className="font-medium text-foreground">{reminder.profiles.name}</p>
-              </div>
-            </div>
-          )}
-
-          {/* AR Simulation Notice */}
-          <div className="text-center pt-4">
-            <p className="text-xs text-muted-foreground">
-              🚀 Esta é uma prévia da experiência AR. Em dispositivos compatíveis,
-              o conteúdo será exibido em realidade aumentada.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <ARExperience
+      reminder={{
+        title: reminder.title,
+        message: reminder.message,
+        location: reminder.locations?.name,
+        creatorName: profile?.name,
+      }}
+      avatarConfig={avatarConfig}
+      onClose={handleClose}
+    />
   );
 }
