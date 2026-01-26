@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { QrCode, Loader2, Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
+import logoArLembretes from "@/assets/logo-ar-lembretes.png";
 import { toast } from "@/hooks/use-toast";
 import type { Session } from "@supabase/supabase-js";
 
@@ -193,26 +194,35 @@ const Index = () => {
   // Not authenticated
   if (!session) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-auth-gradient">
-        <div className="text-center space-y-8 p-8">
-          <div className="flex justify-center">
-            <div className="w-20 h-20 bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center shadow-glow">
-              <QrCode className="w-10 h-10 text-primary-foreground" />
+      <div className="flex min-h-screen flex-col items-center justify-center bg-auth-gradient">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-8 p-8">
+            <div className="flex justify-center">
+              <img 
+                src={logoArLembretes} 
+                alt="AR Lembretes" 
+                className="w-40 h-40 object-contain drop-shadow-2xl"
+              />
             </div>
+            <div className="space-y-4">
+              <h1 className="text-4xl font-bold text-primary-foreground">AR Lembretes</h1>
+              <p className="text-lg text-auth-muted max-w-md">
+                Sistema de Lembretes com Realidade Aumentada via QR Codes
+              </p>
+            </div>
+            <Button
+              onClick={() => navigate("/auth")}
+              className="bg-gradient-to-r from-primary to-accent hover:opacity-90 text-primary-foreground font-semibold px-8 py-6 text-lg shadow-glow"
+            >
+              Acessar Painel de Administração
+            </Button>
           </div>
-          <div className="space-y-4">
-            <h1 className="text-4xl font-bold text-primary-foreground">AR Reminder</h1>
-            <p className="text-lg text-auth-muted max-w-md">
-              Sistema de Lembretes com Realidade Aumentada via QR Codes
-            </p>
-          </div>
-          <Button
-            onClick={() => navigate("/auth")}
-            className="bg-gradient-to-r from-primary to-accent hover:opacity-90 text-primary-foreground font-semibold px-8 py-6 text-lg shadow-glow"
-          >
-            Acessar Painel de Administração
-          </Button>
         </div>
+        
+        {/* Footer */}
+        <footer className="py-4 text-center text-auth-muted text-sm">
+          © {new Date().getFullYear()} AR Lembretes. By João Victor A.S Pascon
+        </footer>
       </div>
     );
   }
@@ -306,6 +316,11 @@ const Index = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Footer */}
+      <footer className="py-6 text-center text-muted-foreground text-sm border-t border-border mt-8">
+        © {new Date().getFullYear()} AR Lembretes. By João Victor A.S Pascon
+      </footer>
     </div>
   );
 };
