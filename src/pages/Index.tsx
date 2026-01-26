@@ -2,51 +2,186 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { LogOut, QrCode, User, Loader2 } from "lucide-react";
+import { QrCode, Loader2, Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import type { User as SupabaseUser, Session } from "@supabase/supabase-js";
+import type { Session } from "@supabase/supabase-js";
+
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { DashboardStats } from "@/components/dashboard/DashboardStats";
+import { ReminderList } from "@/components/reminders/ReminderList";
+import { ReminderFormDialog } from "@/components/reminders/ReminderFormDialog";
+import { LocationFormDialog } from "@/components/reminders/LocationFormDialog";
+import { QRCodeCustomizerDialog } from "@/components/reminders/QRCodeCustomizerDialog";
+import { useProfile } from "@/hooks/useProfile";
+import { useReminders, type ReminderWithLocation } from "@/hooks/useReminders";
+import { useLocations } from "@/hooks/useLocations";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const Index = () => {
-  const [user, setUser] = useState<SupabaseUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+
+  // Dialogs state
+  const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
+  const [locationDialogOpen, setLocationDialogOpen] = useState(false);
+  const [qrCustomizerOpen, setQRCustomizerOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  
+  const [selectedReminder, setSelectedReminder] = useState<ReminderWithLocation | null>(null);
+  const [reminderToDelete, setReminderToDelete] = useState<string | null>(null);
+
+  // Hooks
+  const { profile, isLoading: profileLoading } = useProfile();
+  const { 
+    reminders, 
+    isLoading: remindersLoading, 
+    createReminder, 
+    updateReminder, 
+    deleteReminder,
+    toggleReminderStatus 
+  } = useReminders();
+  const { locations, isLoading: locationsLoading, createLocation } = useLocations();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
-        setUser(session?.user ?? null);
         setIsLoading(false);
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      setUser(session?.user ?? null);
       setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
+  // Handlers
+  const handleCreateNew = () => {
+    setSelectedReminder(null);
+    setReminderDialogOpen(true);
+  };
+
+  const handleEdit = (reminder: ReminderWithLocation) => {
+    setSelectedReminder(reminder);
+    setReminderDialogOpen(true);
+  };
+
+  const handleCustomizeQR = (reminder: ReminderWithLocation) => {
+    setSelectedReminder(reminder);
+    setQRCustomizerOpen(true);
+  };
+
+  const handlePreviewAR = (reminder: ReminderWithLocation) => {
+    window.open(`/ar/${reminder.qr_code_data}`, "_blank");
+  };
+
+  const handleDeleteClick = (id: string) => {
+    setReminderToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!reminderToDelete) return;
+    try {
+      await deleteReminder(reminderToDelete);
       toast({
-        title: "Erro ao sair",
-        description: error.message,
+        title: "Lembrete excluído",
+        description: "O lembrete foi removido com sucesso.",
+      });
+    } catch {
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir o lembrete.",
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Até logo!",
-        description: "Você foi desconectado com sucesso",
-      });
-      navigate("/auth");
+    } finally {
+      setDeleteDialogOpen(false);
+      setReminderToDelete(null);
     }
   };
 
+  const handleReminderSubmit = async (data: {
+    title: string;
+    message: string;
+    location_id?: string;
+    is_active: boolean;
+  }) => {
+    try {
+      if (selectedReminder) {
+        await updateReminder(selectedReminder.id, data);
+        toast({
+          title: "Lembrete atualizado",
+          description: "As alterações foram salvas com sucesso.",
+        });
+      } else {
+        await createReminder(data);
+        toast({
+          title: "Lembrete criado",
+          description: "Seu novo lembrete foi criado com sucesso!",
+        });
+      }
+    } catch {
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar o lembrete.",
+        variant: "destructive",
+      });
+      throw new Error("Failed to save reminder");
+    }
+  };
+
+  const handleLocationSubmit = async (data: {
+    name: string;
+    description?: string;
+    address?: string;
+  }) => {
+    try {
+      await createLocation(data);
+      toast({
+        title: "Local criado",
+        description: "O novo local foi adicionado com sucesso.",
+      });
+    } catch {
+      toast({
+        title: "Erro",
+        description: "Não foi possível criar o local.",
+        variant: "destructive",
+      });
+      throw new Error("Failed to create location");
+    }
+  };
+
+  const handleQRStyleSave = async (id: string, style: { foreground: string; background: string }) => {
+    try {
+      await updateReminder(id, { qr_code_style: style });
+      toast({
+        title: "QR Code personalizado",
+        description: "O estilo do QR Code foi atualizado.",
+      });
+    } catch {
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar as alterações.",
+        variant: "destructive",
+      });
+      throw new Error("Failed to update QR style");
+    }
+  };
+
+  // Loading state
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-auth-gradient">
@@ -55,24 +190,25 @@ const Index = () => {
     );
   }
 
-  if (!session || !user) {
+  // Not authenticated
+  if (!session) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-auth-gradient">
         <div className="text-center space-y-8 p-8">
           <div className="flex justify-center">
             <div className="w-20 h-20 bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center shadow-glow">
-              <QrCode className="w-10 h-10 text-white" />
+              <QrCode className="w-10 h-10 text-primary-foreground" />
             </div>
           </div>
           <div className="space-y-4">
-            <h1 className="text-4xl font-bold text-white">AR Reminder</h1>
+            <h1 className="text-4xl font-bold text-primary-foreground">AR Reminder</h1>
             <p className="text-lg text-auth-muted max-w-md">
               Sistema de Lembretes com Realidade Aumentada via QR Codes
             </p>
           </div>
           <Button
             onClick={() => navigate("/auth")}
-            className="bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-semibold px-8 py-6 text-lg shadow-glow"
+            className="bg-gradient-to-r from-primary to-accent hover:opacity-90 text-primary-foreground font-semibold px-8 py-6 text-lg shadow-glow"
           >
             Acessar Painel de Administração
           </Button>
@@ -81,100 +217,97 @@ const Index = () => {
     );
   }
 
+  const activeReminders = reminders.filter((r) => r.is_active).length;
+  const dataLoading = profileLoading || remindersLoading || locationsLoading;
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
-              <QrCode className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-bold text-lg text-foreground">AR Reminder</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <User className="w-4 h-4" />
-              <span className="text-sm">{user.email}</span>
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleLogout}
-              className="border-border hover:bg-muted"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sair
-            </Button>
-          </div>
-        </div>
-      </header>
+      <DashboardHeader profile={profile} />
 
-      {/* Main content */}
-      <main className="container mx-auto px-4 py-12">
-        <div className="text-center space-y-6">
-          <h1 className="text-3xl font-bold text-foreground">
-            Bem-vindo ao Painel de Administração
-          </h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Gerencie seus QR Codes e lembretes em realidade aumentada. 
-            Comece criando seu primeiro código ou explore as funcionalidades disponíveis.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-12 max-w-5xl mx-auto">
-            <DashboardCard
-              icon="🎭"
-              title="Meu Avatar"
-              description="Crie ou edite seu avatar 3D"
-              count=""
-              onClick={() => navigate("/create-avatar")}
-            />
-            <DashboardCard
-              icon="🎯"
-              title="QR Codes"
-              description="Gerencie seus códigos únicos"
-              count="0"
-            />
-            <DashboardCard
-              icon="📱"
-              title="Lembretes AR"
-              description="Crie lembretes em realidade aumentada"
-              count="0"
-            />
-            <DashboardCard
-              icon="👥"
-              title="Usuários"
-              description="Gerencie acessos e permissões"
-              count="1"
-            />
+      <main className="container mx-auto px-4 py-6 space-y-8">
+        {/* Stats */}
+        <DashboardStats
+          totalReminders={reminders.length}
+          activeReminders={activeReminders}
+          totalLocations={locations.length}
+          isLoading={dataLoading}
+        />
+
+        {/* Quick Actions */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">Meus Lembretes</h2>
+            <p className="text-muted-foreground">
+              Gerencie seus lembretes e QR Codes em um só lugar
+            </p>
           </div>
+          <Button 
+            onClick={handleCreateNew}
+            size="lg"
+            className="bg-gradient-to-r from-primary to-accent hover:opacity-90 shadow-glow"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Criar novo lembrete
+          </Button>
         </div>
+
+        {/* Reminders List */}
+        <ReminderList
+          reminders={reminders}
+          isLoading={dataLoading}
+          onEdit={handleEdit}
+          onCustomizeQR={handleCustomizeQR}
+          onPreviewAR={handlePreviewAR}
+          onDelete={handleDeleteClick}
+          onToggleStatus={toggleReminderStatus}
+          onCreateNew={handleCreateNew}
+        />
       </main>
+
+      {/* Dialogs */}
+      <ReminderFormDialog
+        open={reminderDialogOpen}
+        onOpenChange={setReminderDialogOpen}
+        reminder={selectedReminder}
+        locations={locations}
+        onSubmit={handleReminderSubmit}
+        onCreateLocation={() => setLocationDialogOpen(true)}
+      />
+
+      <LocationFormDialog
+        open={locationDialogOpen}
+        onOpenChange={setLocationDialogOpen}
+        onSubmit={handleLocationSubmit}
+      />
+
+      <QRCodeCustomizerDialog
+        open={qrCustomizerOpen}
+        onOpenChange={setQRCustomizerOpen}
+        reminder={selectedReminder}
+        onSave={handleQRStyleSave}
+      />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir lembrete?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. O lembrete e seu QR Code serão removidos permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
-
-interface DashboardCardProps {
-  icon: string;
-  title: string;
-  description: string;
-  count: string;
-  onClick?: () => void;
-}
-
-const DashboardCard = ({ icon, title, description, count, onClick }: DashboardCardProps) => (
-  <div 
-    className="p-6 bg-card rounded-xl border border-border hover:shadow-lg transition-shadow cursor-pointer group"
-    onClick={onClick}
-  >
-    <div className="flex items-start justify-between mb-4">
-      <span className="text-3xl">{icon}</span>
-      {count && <span className="text-2xl font-bold text-primary">{count}</span>}
-    </div>
-    <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
-      {title}
-    </h3>
-    <p className="text-sm text-muted-foreground">{description}</p>
-  </div>
-);
 
 export default Index;
