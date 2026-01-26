@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      locations: {
+        Row: {
+          address: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_config: Json | null
@@ -46,6 +76,56 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      reminders: {
+        Row: {
+          ar_config: Json | null
+          created_at: string
+          id: string
+          is_active: boolean
+          location_id: string | null
+          message: string
+          qr_code_data: string
+          qr_code_style: Json | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ar_config?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location_id?: string | null
+          message: string
+          qr_code_data: string
+          qr_code_style?: Json | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ar_config?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location_id?: string | null
+          message?: string
+          qr_code_data?: string
+          qr_code_style?: Json | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminders_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
