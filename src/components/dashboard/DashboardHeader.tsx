@@ -9,9 +9,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, QrCode, User, Settings, ChevronDown } from "lucide-react";
+import { LogOut, User, Settings, ChevronDown } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import type { Profile } from "@/hooks/useProfile";
+import logoArLembretes from "@/assets/logo-ar-lembretes.png";
 
 interface DashboardHeaderProps {
   profile: Profile | null;
@@ -49,10 +50,12 @@ export function DashboardHeader({ profile }: DashboardHeaderProps) {
           className="flex items-center gap-3 cursor-pointer"
           onClick={() => navigate("/")}
         >
-          <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-glow">
-            <QrCode className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <span className="font-bold text-lg text-foreground hidden sm:block">AR Reminder</span>
+          <img 
+            src={logoArLembretes} 
+            alt="AR Lembretes" 
+            className="w-10 h-10 object-contain"
+          />
+          <span className="font-bold text-lg text-foreground hidden sm:block">AR Lembretes</span>
         </div>
 
         {/* User Menu */}

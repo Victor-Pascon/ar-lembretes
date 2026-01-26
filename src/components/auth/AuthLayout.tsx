@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { QrCode, Sparkles } from "lucide-react";
+import logoArLembretes from "@/assets/logo-ar-lembretes.png";
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -7,34 +7,32 @@ interface AuthLayoutProps {
 
 export const AuthLayout = ({ children }: AuthLayoutProps) => {
   return (
-    <div className="min-h-screen flex bg-auth-gradient">
-      {/* Left side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-12 relative overflow-hidden">
-        {/* Animated background elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-20 left-20 w-64 h-64 bg-auth-primary/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-32 right-16 w-48 h-48 bg-auth-accent/20 rounded-full blur-2xl animate-pulse delay-1000" />
-          <div className="absolute top-1/2 left-1/3 w-32 h-32 bg-auth-secondary/30 rounded-full blur-xl animate-pulse delay-500" />
-        </div>
-
-        <div className="relative z-10 text-center space-y-8 max-w-md">
-          {/* Logo */}
-          <div className="flex justify-center">
-            <div className="relative">
-              <div className="w-24 h-24 bg-gradient-to-br from-auth-primary to-auth-accent rounded-2xl flex items-center justify-center shadow-glow">
-                <QrCode className="w-12 h-12 text-white" />
-              </div>
-              <div className="absolute -top-2 -right-2">
-                <Sparkles className="w-6 h-6 text-auth-accent animate-pulse" />
-              </div>
-            </div>
+    <div className="min-h-screen flex flex-col bg-auth-gradient">
+      <div className="flex flex-1">
+        {/* Left side - Branding */}
+        <div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-12 relative overflow-hidden">
+          {/* Animated background elements */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute top-20 left-20 w-64 h-64 bg-auth-primary/20 rounded-full blur-3xl animate-pulse" />
+            <div className="absolute bottom-32 right-16 w-48 h-48 bg-auth-accent/20 rounded-full blur-2xl animate-pulse delay-1000" />
+            <div className="absolute top-1/2 left-1/3 w-32 h-32 bg-auth-secondary/30 rounded-full blur-xl animate-pulse delay-500" />
           </div>
 
-          {/* Title */}
-          <div className="space-y-4">
-            <h1 className="text-4xl font-bold text-white">
-              AR Reminder
-            </h1>
+          <div className="relative z-10 text-center space-y-8 max-w-md">
+            {/* Logo */}
+            <div className="flex justify-center">
+              <img 
+                src={logoArLembretes} 
+                alt="AR Lembretes" 
+                className="w-48 h-48 object-contain drop-shadow-2xl"
+              />
+            </div>
+
+            {/* Title */}
+            <div className="space-y-4">
+              <h1 className="text-4xl font-bold text-white">
+                AR Lembretes
+              </h1>
             <p className="text-lg text-auth-muted">
               Sistema de Lembretes com Realidade Aumentada
             </p>
@@ -61,12 +59,18 @@ export const AuthLayout = ({ children }: AuthLayoutProps) => {
         </div>
       </div>
 
-      {/* Right side - Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
-        <div className="w-full max-w-md">
-          {children}
+        {/* Right side - Form */}
+        <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
+          <div className="w-full max-w-md">
+            {children}
+          </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="py-4 text-center text-auth-muted text-sm">
+        © {new Date().getFullYear()} AR Lembretes. By João Victor A.S Pascon
+      </footer>
     </div>
   );
 };
