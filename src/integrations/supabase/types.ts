@@ -16,6 +16,8 @@ export type Database = {
     Tables: {
       profiles: {
         Row: {
+          avatar_config: Json | null
+          avatar_url: string | null
           created_at: string
           email: string
           id: string
@@ -24,6 +26,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          avatar_config?: Json | null
+          avatar_url?: string | null
           created_at?: string
           email: string
           id?: string
@@ -32,6 +36,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          avatar_config?: Json | null
+          avatar_url?: string | null
           created_at?: string
           email?: string
           id?: string

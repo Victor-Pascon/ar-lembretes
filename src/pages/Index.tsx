@@ -120,7 +120,14 @@ const Index = () => {
             Gerencie seus QR Codes e lembretes em realidade aumentada. 
             Comece criando seu primeiro código ou explore as funcionalidades disponíveis.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-12 max-w-5xl mx-auto">
+            <DashboardCard
+              icon="🎭"
+              title="Meu Avatar"
+              description="Crie ou edite seu avatar 3D"
+              count=""
+              onClick={() => navigate("/create-avatar")}
+            />
             <DashboardCard
               icon="🎯"
               title="QR Codes"
@@ -151,13 +158,17 @@ interface DashboardCardProps {
   title: string;
   description: string;
   count: string;
+  onClick?: () => void;
 }
 
-const DashboardCard = ({ icon, title, description, count }: DashboardCardProps) => (
-  <div className="p-6 bg-card rounded-xl border border-border hover:shadow-lg transition-shadow cursor-pointer group">
+const DashboardCard = ({ icon, title, description, count, onClick }: DashboardCardProps) => (
+  <div 
+    className="p-6 bg-card rounded-xl border border-border hover:shadow-lg transition-shadow cursor-pointer group"
+    onClick={onClick}
+  >
     <div className="flex items-start justify-between mb-4">
       <span className="text-3xl">{icon}</span>
-      <span className="text-2xl font-bold text-primary">{count}</span>
+      {count && <span className="text-2xl font-bold text-primary">{count}</span>}
     </div>
     <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
       {title}
