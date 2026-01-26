@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +19,8 @@ import {
   Trash2, 
   MapPin,
   Copy,
-  Download
+  Download,
+  Image
 } from "lucide-react";
 import { QRCodeDisplay } from "./QRCodeDisplay";
 import type { ReminderWithLocation } from "@/hooks/useReminders";
@@ -41,6 +43,7 @@ export function ReminderCard({
   onDelete,
   onToggleStatus,
 }: ReminderCardProps) {
+  const navigate = useNavigate();
   const [isToggling, setIsToggling] = useState(false);
 
   const handleToggle = async (checked: boolean) => {
@@ -98,7 +101,11 @@ export function ReminderCard({
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onCustomizeQR(reminder)}>
                   <Palette className="w-4 h-4 mr-2" />
-                  Personalizar QR
+                  Cores do QR
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate(`/qr-editor/${reminder.id}`)}>
+                  <Image className="w-4 h-4 mr-2" />
+                  Editor Visual
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onPreviewAR(reminder)}>
                   <Eye className="w-4 h-4 mr-2" />
@@ -109,7 +116,7 @@ export function ReminderCard({
                   <Copy className="w-4 h-4 mr-2" />
                   Copiar link
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate(`/qr-editor/${reminder.id}`)}>
                   <Download className="w-4 h-4 mr-2" />
                   Baixar QR Code
                 </DropdownMenuItem>
@@ -174,14 +181,25 @@ export function ReminderCard({
                 size="sm" 
                 onClick={() => onCustomizeQR(reminder)}
                 className="h-8 px-2"
+                title="Cores do QR"
               >
                 <Palette className="w-3.5 h-3.5" />
               </Button>
               <Button 
                 variant="ghost" 
                 size="sm" 
+                onClick={() => navigate(`/qr-editor/${reminder.id}`)}
+                className="h-8 px-2"
+                title="Editor Visual"
+              >
+                <Image className="w-3.5 h-3.5" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
                 onClick={() => onPreviewAR(reminder)}
                 className="h-8 px-2"
+                title="Visualizar AR"
               >
                 <Eye className="w-3.5 h-3.5" />
               </Button>

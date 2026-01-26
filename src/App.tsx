@@ -8,6 +8,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import CreateAvatar from "./pages/CreateAvatar";
 import ARPreview from "./pages/ARPreview";
+import QRCodeEditor from "./pages/QRCodeEditor";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/create-avatar" element={<CreateAvatar />} />
           <Route path="/ar/:reminderId" element={<ARPreview />} />
+          <Route path="/qr-editor/:reminderId" element={<QRCodeEditor />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
