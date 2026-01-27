@@ -8,6 +8,7 @@ import ARExperience from "@/components/ar/ARExperience";
 import ViewModeSelector from "@/components/ar/ViewModeSelector";
 import CardView from "@/components/ar/CardView";
 import { AvatarConfig } from "@/components/avatar/AvatarModel";
+import { normalizeAvatarConfig, getDefaultAvatarConfig } from "@/components/avatar/AvatarGenerator";
 
 interface ReminderData {
   id: string;
@@ -30,14 +31,6 @@ interface ProfileData {
 }
 
 type ViewMode = "loading" | "error" | "select" | "card" | "ar";
-
-const defaultAvatarConfig: AvatarConfig = {
-  skinColor: "#e0b8a0",
-  hairColor: "#3d2314",
-  eyeColor: "#4a6741",
-  hairStyle: "short",
-  hasGlasses: false,
-};
 
 export default function ARPreview() {
   const { reminderId } = useParams();
@@ -94,25 +87,10 @@ export default function ARPreview() {
           .maybeSingle();
 
         if (!profileError && profileData) {
-          // Parse avatar_config safely
+          // Parse and normalize avatar_config with backward compatibility
           let parsedAvatarConfig: AvatarConfig | null = null;
           if (profileData.avatar_config && typeof profileData.avatar_config === 'object') {
-            const config = profileData.avatar_config as Record<string, unknown>;
-            if (
-              typeof config.skinColor === 'string' &&
-              typeof config.hairColor === 'string' &&
-              typeof config.eyeColor === 'string' &&
-              typeof config.hairStyle === 'string' &&
-              typeof config.hasGlasses === 'boolean'
-            ) {
-              parsedAvatarConfig = {
-                skinColor: config.skinColor,
-                hairColor: config.hairColor,
-                eyeColor: config.eyeColor,
-                hairStyle: config.hairStyle as "short" | "medium" | "long" | "bald",
-                hasGlasses: config.hasGlasses,
-              };
-            }
+            parsedAvatarConfig = normalizeAvatarConfig(profileData.avatar_config as Partial<AvatarConfig>);
           }
           
           setProfile({
@@ -175,7 +153,7 @@ export default function ARPreview() {
   }
 
   // Get avatar config from profile or use default
-  const avatarConfig: AvatarConfig = profile?.avatar_config || defaultAvatarConfig;
+  const avatarConfig: AvatarConfig = profile?.avatar_config || getDefaultAvatarConfig();
 
   // Selection screen
   if (viewMode === "select") {
