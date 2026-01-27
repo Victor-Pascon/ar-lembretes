@@ -119,7 +119,16 @@ export const generateAvatarConfig = async (imageSrc: string): Promise<AvatarConf
     hairColor: mapToHairPalette(hairColor),
     eyeColor: "#634e34", // Default brown eyes
     hairStyle: "medium",
+    faceShape: "oval",
+    expression: "happy",
     hasGlasses: false,
+    glassesStyle: "round",
+    hasHat: false,
+    hatStyle: "none",
+    hasEarrings: false,
+    hasFacialHair: false,
+    facialHairStyle: "none",
+    bodyStyle: "average",
   };
 };
 
@@ -128,5 +137,35 @@ export const getDefaultAvatarConfig = (): AvatarConfig => ({
   hairColor: "#3d2314",
   eyeColor: "#634e34",
   hairStyle: "medium",
+  faceShape: "oval",
+  expression: "happy",
   hasGlasses: false,
+  glassesStyle: "round",
+  hasHat: false,
+  hatStyle: "none",
+  hasEarrings: false,
+  hasFacialHair: false,
+  facialHairStyle: "none",
+  bodyStyle: "average",
 });
+
+// Helper to ensure backward compatibility with old avatar configs
+export const normalizeAvatarConfig = (config: Partial<AvatarConfig>): AvatarConfig => {
+  const defaults = getDefaultAvatarConfig();
+  return {
+    ...defaults,
+    ...config,
+    // Ensure new fields have defaults if not present
+    faceShape: config.faceShape || defaults.faceShape,
+    expression: config.expression || defaults.expression,
+    glassesStyle: config.glassesStyle || defaults.glassesStyle,
+    hasHat: config.hasHat ?? defaults.hasHat,
+    hatStyle: config.hatStyle || defaults.hatStyle,
+    hasEarrings: config.hasEarrings ?? defaults.hasEarrings,
+    hasFacialHair: config.hasFacialHair ?? defaults.hasFacialHair,
+    facialHairStyle: config.facialHairStyle || defaults.facialHairStyle,
+    bodyStyle: config.bodyStyle || defaults.bodyStyle,
+    // Handle expanded hair styles - map old values if needed
+    hairStyle: config.hairStyle || defaults.hairStyle,
+  };
+};
