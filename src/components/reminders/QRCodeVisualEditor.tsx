@@ -20,6 +20,7 @@ export function QRCodeVisualEditor({ reminder, onSave, onBack }: QRCodeVisualEdi
   const [isSaving, setIsSaving] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [baseImage, setBaseImage] = useState<string | null>(null);
+  const [centerLogo, setCenterLogo] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Initialize config from reminder's existing style or defaults
@@ -31,10 +32,13 @@ export function QRCodeVisualEditor({ reminder, onSave, onBack }: QRCodeVisualEdi
     };
   });
 
-  // Load base image if it exists
+  // Load images if they exist
   useEffect(() => {
     if (config.baseImageUrl) {
       setBaseImage(config.baseImageUrl);
+    }
+    if (config.centerLogoUrl) {
+      setCenterLogo(config.centerLogoUrl);
     }
   }, []);
 
@@ -56,6 +60,21 @@ export function QRCodeVisualEditor({ reminder, onSave, onBack }: QRCodeVisualEdi
       handleConfigChange({ baseImageUrl: result });
     };
     reader.readAsDataURL(file);
+  }, [handleConfigChange]);
+
+  const handleCenterLogoUpload = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      setCenterLogo(result);
+      handleConfigChange({ centerLogoUrl: result });
+    };
+    reader.readAsDataURL(file);
+  }, [handleConfigChange]);
+
+  const handleRemoveCenterLogo = useCallback(() => {
+    setCenterLogo(null);
+    handleConfigChange({ centerLogoUrl: undefined });
   }, [handleConfigChange]);
 
   const handleDownload = useCallback(async () => {
@@ -113,6 +132,7 @@ export function QRCodeVisualEditor({ reminder, onSave, onBack }: QRCodeVisualEdi
   const handleReset = useCallback(() => {
     setConfig(defaultQRVisualConfig);
     setBaseImage(null);
+    setCenterLogo(null);
     setHasUnsavedChanges(true);
   }, []);
 
@@ -166,6 +186,7 @@ export function QRCodeVisualEditor({ reminder, onSave, onBack }: QRCodeVisualEdi
                 qrData={reminder.qr_code_data}
                 config={config}
                 baseImage={baseImage}
+                centerLogo={centerLogo}
                 onPositionChange={handlePositionChange}
               />
             </div>
@@ -189,9 +210,12 @@ export function QRCodeVisualEditor({ reminder, onSave, onBack }: QRCodeVisualEdi
                 config={config}
                 onChange={handleConfigChange}
                 onUploadImage={handleImageUpload}
+                onUploadCenterLogo={handleCenterLogoUpload}
+                onRemoveCenterLogo={handleRemoveCenterLogo}
                 onDownload={handleDownload}
                 onReset={handleReset}
                 isDownloading={isDownloading}
+                centerLogo={centerLogo}
               />
             </div>
           </div>

@@ -6,6 +6,7 @@ interface QRCodeCanvasProps {
   qrData: string;
   config: QRVisualConfig;
   baseImage: string | null;
+  centerLogo: string | null;
   onPositionChange: (position: { x: number; y: number }) => void;
   canvasSize?: { width: number; height: number };
 }
@@ -15,7 +16,7 @@ export interface QRCodeCanvasRef {
 }
 
 export const QRCodeCanvas = forwardRef<QRCodeCanvasRef, QRCodeCanvasProps>(
-  ({ qrData, config, baseImage, onPositionChange, canvasSize = { width: 600, height: 400 } }, ref) => {
+  ({ qrData, config, baseImage, centerLogo, onPositionChange, canvasSize = { width: 600, height: 400 } }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const qrRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
@@ -225,8 +226,14 @@ export const QRCodeCanvas = forwardRef<QRCodeCanvasRef, QRCodeCanvasProps>(
             size={config.size}
             fgColor={config.foreground}
             bgColor={config.background}
-            level="M"
+            level={centerLogo ? "H" : "M"}
             includeMargin={false}
+            imageSettings={centerLogo ? {
+              src: centerLogo,
+              height: Math.round((config.size * (config.centerLogoSize || 25)) / 100),
+              width: Math.round((config.size * (config.centerLogoSize || 25)) / 100),
+              excavate: true,
+            } : undefined}
           />
         </div>
 
