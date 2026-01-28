@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,10 +10,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, Settings, ChevronDown } from "lucide-react";
+import { LogOut, User, Settings, ChevronDown, MapPin } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import type { Profile } from "@/hooks/useProfile";
 import logoArLembretes from "@/assets/logo-ar-lembretes.png";
+import { LocationsManagementDialog } from "@/components/locations/LocationsManagementDialog";
 
 interface DashboardHeaderProps {
   profile: Profile | null;
@@ -20,6 +22,7 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ profile }: DashboardHeaderProps) {
   const navigate = useNavigate();
+  const [locationsDialogOpen, setLocationsDialogOpen] = useState(false);
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -43,62 +46,73 @@ export function DashboardHeader({ profile }: DashboardHeaderProps) {
     : "AD";
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-        {/* Logo */}
-        <div 
-          className="flex items-center gap-3 cursor-pointer"
-          onClick={() => navigate("/")}
-        >
-          <img 
-            src={logoArLembretes} 
-            alt="AR Lembretes" 
-            className="w-10 h-10 object-contain"
-          />
-          <span className="font-bold text-lg text-foreground hidden sm:block">AR Lembretes</span>
-        </div>
+    <>
+      <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+          {/* Logo */}
+          <div 
+            className="flex items-center gap-3 cursor-pointer"
+            onClick={() => navigate("/")}
+          >
+            <img 
+              src={logoArLembretes} 
+              alt="AR Lembretes" 
+              className="w-10 h-10 object-contain"
+            />
+            <span className="font-bold text-lg text-foreground hidden sm:block">AR Lembretes</span>
+          </div>
 
-        {/* User Menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-2 px-2 hover:bg-muted">
-              <Avatar className="h-8 w-8 border border-border">
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt={profile.name} className="object-cover" />
-                ) : (
-                  <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground text-sm">
-                    {initials}
-                  </AvatarFallback>
-                )}
-              </Avatar>
-              <span className="text-sm font-medium text-foreground hidden md:block max-w-[150px] truncate">
-                {profile?.name || "Administrador"}
-              </span>
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <div className="px-2 py-1.5">
-              <p className="text-sm font-medium text-foreground">{profile?.name || "Administrador"}</p>
-              <p className="text-xs text-muted-foreground truncate">{profile?.email}</p>
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate("/create-avatar")}>
-              <User className="w-4 h-4 mr-2" />
-              Meu Avatar
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings className="w-4 h-4 mr-2" />
-              Configurações
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
-              <LogOut className="w-4 h-4 mr-2" />
-              Sair
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </header>
+          {/* User Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="flex items-center gap-2 px-2 hover:bg-muted">
+                <Avatar className="h-8 w-8 border border-border">
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt={profile.name} className="object-cover" />
+                  ) : (
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground text-sm">
+                      {initials}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <span className="text-sm font-medium text-foreground hidden md:block max-w-[150px] truncate">
+                  {profile?.name || "Administrador"}
+                </span>
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <div className="px-2 py-1.5">
+                <p className="text-sm font-medium text-foreground">{profile?.name || "Administrador"}</p>
+                <p className="text-xs text-muted-foreground truncate">{profile?.email}</p>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate("/my-avatar")}>
+                <User className="w-4 h-4 mr-2" />
+                Meu Avatar
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setLocationsDialogOpen(true)}>
+                <MapPin className="w-4 h-4 mr-2" />
+                Meus Locais
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Settings className="w-4 h-4 mr-2" />
+                Configurações
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                <LogOut className="w-4 h-4 mr-2" />
+                Sair
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+
+      <LocationsManagementDialog
+        open={locationsDialogOpen}
+        onOpenChange={setLocationsDialogOpen}
+      />
+    </>
   );
 }
