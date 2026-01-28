@@ -1,4 +1,4 @@
-import { useRef, memo } from "react";
+import { useRef, memo, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import HeadGeometry from "./parts/HeadGeometry";
@@ -57,31 +57,31 @@ const AvatarModel = memo(({ config, autoRotate = false, animated = false }: Avat
     }
   });
 
-  // Create materials
-  const skinMaterial = new THREE.MeshStandardMaterial({
+  // Memoize materials to prevent recreating every frame
+  const skinMaterial = useMemo(() => new THREE.MeshStandardMaterial({
     color: config.skinColor,
-    roughness: 0.6,
-    metalness: 0.1,
-  });
+    roughness: 0.5,
+    metalness: 0.05,
+  }), [config.skinColor]);
 
-  const hairMaterial = new THREE.MeshStandardMaterial({
+  const hairMaterial = useMemo(() => new THREE.MeshStandardMaterial({
     color: config.hairColor,
-    roughness: 0.8,
+    roughness: 0.7,
     metalness: 0,
-  });
+  }), [config.hairColor]);
 
-  const eyeMaterial = new THREE.MeshStandardMaterial({
+  const eyeMaterial = useMemo(() => new THREE.MeshStandardMaterial({
     color: config.eyeColor,
-    roughness: 0.3,
-    metalness: 0.2,
-  });
+    roughness: 0.25,
+    metalness: 0.15,
+  }), [config.eyeColor]);
 
   return (
-    <group ref={groupRef} position={[0, -0.5, 0]}>
-      {/* Head with face shape */}
+    <group ref={groupRef} position={[0, -0.6, 0]}>
+      {/* Head with face shape - cartoon proportions */}
       <HeadGeometry config={config} skinMaterial={skinMaterial} />
       
-      {/* Facial features (eyes, nose, mouth, eyebrows) */}
+      {/* Facial features (eyes, nose, mouth, eyebrows) - cartoon style */}
       <FacialFeatures 
         config={config} 
         skinMaterial={skinMaterial} 
@@ -90,7 +90,7 @@ const AvatarModel = memo(({ config, autoRotate = false, animated = false }: Avat
         animated={animated}
       />
       
-      {/* Hair */}
+      {/* Hair - more volume */}
       <HairStyles 
         config={config} 
         hairMaterial={hairMaterial}
@@ -103,7 +103,7 @@ const AvatarModel = memo(({ config, autoRotate = false, animated = false }: Avat
       {/* Facial hair */}
       <FacialHair config={config} hairMaterial={hairMaterial} />
       
-      {/* Body */}
+      {/* Body - cartoon proportions */}
       <Body config={config} skinMaterial={skinMaterial} animated={animated} />
     </group>
   );

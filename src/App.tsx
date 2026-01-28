@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import CreateAvatar from "./pages/CreateAvatar";
+import MyAvatar from "./pages/MyAvatar";
 import ARPreview from "./pages/ARPreview";
 import QRCodeEditor from "./pages/QRCodeEditor";
 import NotFound from "./pages/NotFound";
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/create-avatar" element={<CreateAvatar />} />
+          <Route path="/my-avatar" element={<MyAvatar />} />
           <Route path="/ar/:reminderId" element={<ARPreview />} />
           <Route path="/qr-editor/:reminderId" element={<QRCodeEditor />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
