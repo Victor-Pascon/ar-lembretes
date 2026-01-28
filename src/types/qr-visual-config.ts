@@ -3,12 +3,16 @@ export interface QRVisualConfig {
   foreground: string;
   background: string;
   
-  // New visual configuration
+  // Visual configuration
   position: { x: number; y: number };
   size: number;
   rotation: number;
   opacity: number;
   baseImageUrl?: string;
+  
+  // Center logo configuration
+  centerLogoUrl?: string;
+  centerLogoSize?: number; // Percentage of QR size (10-40%)
 }
 
 export const defaultQRVisualConfig: QRVisualConfig = {
@@ -18,4 +22,5 @@ export const defaultQRVisualConfig: QRVisualConfig = {
   size: 150,
   rotation: 0,
   opacity: 1,
+  centerLogoSize: 25,
 };
