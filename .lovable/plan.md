@@ -1,160 +1,28 @@
 
 
-## Melhoria dos Avatares 3D - Redesign Completo
+## Logo/Marca no Centro do QR Code
 
-### Analise do Estado Atual
+### Visao Geral
 
-O sistema atual de avatares possui varios problemas:
-
-**Problemas Identificados:**
-- Cabeca esferica simples, sem formato anatomico
-- Corpo cilindrico basico, sem ombros ou proporcoes realistas
-- Olhos desalinhados e muito grandes
-- Nariz como um simples cone
-- Cabelos sao apenas esferas empilhadas
-- Falta de expressividade no rosto
-- Sem variedade de acessorios
+Adicionar uma nova funcionalidade que permite inserir uma imagem (logo, marca, icone) no centro do QR Code, mantendo a funcionalidade existente de imagem de fundo.
 
 ---
 
-### Proposta de Melhoria
-
-#### 1. Nova Estrutura do AvatarConfig
-
-Expandir as opcoes de personalizacao:
-
-```typescript
-interface AvatarConfig {
-  // Cores (existentes)
-  skinColor: string;
-  hairColor: string;
-  eyeColor: string;
-  
-  // Estilos de cabelo (expandido)
-  hairStyle: "short" | "medium" | "long" | "curly" | "ponytail" | "mohawk" | "bald";
-  
-  // NOVOS - Formato do rosto
-  faceShape: "round" | "oval" | "square" | "heart";
-  
-  // NOVOS - Acessorios
-  hasGlasses: boolean;
-  glassesStyle: "round" | "square" | "cat-eye" | "aviator";
-  hasHat: boolean;
-  hatStyle: "cap" | "beanie" | "cowboy" | "none";
-  hasEarrings: boolean;
-  hasFacialHair: boolean;
-  facialHairStyle: "beard" | "goatee" | "mustache" | "stubble" | "none";
-  
-  // NOVOS - Expressao
-  expression: "happy" | "neutral" | "surprised" | "wink";
-  
-  // NOVOS - Corpo
-  bodyStyle: "slim" | "average" | "athletic";
-}
-```
-
----
-
-#### 2. Novo Modelo de Cabeca (Anatomicamente Proporcional)
-
-Substituir a esfera simples por uma geometria mais elaborada:
+### Diferenca entre as duas opcoes
 
 ```text
-Vista Frontal (Antes):        Vista Frontal (Depois):
-      ____                          ____
-     /    \                       /      \
-    |      |         -->         |   ()   |
-    |  ()  |                     |  \__/  |
-     \____/                       \______/
-                                   Formato oval com
-                                   queixo definido
+IMAGEM DE FUNDO (ja existe):     LOGO NO CENTRO (nova):
++---------------------------+    +---------------------------+
+|   [imagem de fundo]       |    |                           |
+|                           |    |   ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓       |
+|     ▓▓▓▓▓▓▓▓▓             |    |   ▓▓             ▓▓       |
+|     ▓▓      ▓▓            |    |   ▓▓  [LOGO]    ▓▓       |
+|     ▓▓      ▓▓            |    |   ▓▓             ▓▓       |
+|     ▓▓▓▓▓▓▓▓▓             |    |   ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓       |
+|                           |    |                           |
++---------------------------+    +---------------------------+
+     QR sobre a imagem              Logo dentro do QR
 ```
-
-**Tecnica:** Usar `LatheGeometry` ou combinar multiplas geometrias para criar um formato mais natural:
-- Cabeca: Elipsoide achatada (mais larga que alta)
-- Queixo: Esfera menor na base
-- Bochechas: Esferas sutis nas laterais
-
----
-
-#### 3. Novos Estilos de Cabelo
-
-```text
-CURTO:          MEDIO:          LONGO:          CACHEADO:
-  ___             ___            ___              ~~~
- /   \           /   \          /   \           /~~~\
-|     |         |     |        |     |         |~~~~~|
-                  \_/            |   |          \~~~~/
-                                 |   |           \_/
-                                  \_/
-
-RABO:           MOICANO:
-  ___             /|\
- /   \           | |
-|     |----      |H|
-                 | |
-                  V
-```
-
-Cada estilo tera sua propria geometria complexa usando combinacoes de:
-- `CapsuleGeometry` para mechas
-- `SphereGeometry` para volume
-- `CylinderGeometry` para rabos de cavalo
-- Grupos hierarquicos para animacao
-
----
-
-#### 4. Formatos de Rosto
-
-```text
-REDONDO:        OVAL:           QUADRADO:       CORACAO:
-  ___             ___             ____            ___
- /   \           /   \           |    |          /   \
-(     )         (     )          |    |         (     )
- \___/           \   /           |____|          \   /
-                  \_/                              V
-```
-
-Cada formato usa diferentes proporcoes de ellipsoides.
-
----
-
-#### 5. Acessorios Detalhados
-
-**Oculos:**
-- Redondos: Estilo Harry Potter
-- Quadrados: Estilo executivo
-- Cat-eye: Estilo retro/feminino
-- Aviador: Estilo classico
-
-**Chapeus:**
-- Bone: Com aba frontal
-- Gorro: Estilo inverno
-- Cowboy: Com abas largas
-
-**Pelos Faciais:**
-- Barba completa
-- Cavanhaque
-- Bigode
-- Barba por fazer (stubble)
-
-**Brincos:**
-- Argolas simples nas orelhas
-
----
-
-#### 6. Expressoes Faciais
-
-```text
-FELIZ:          NEUTRO:         SURPRESO:       PISCANDO:
-  O   O           O   O          O   O          O   -
-   \_/             ---           \___/           \_/
-```
-
-Implementar atraves de:
-- Posicao e escala dos olhos
-- Formato da boca (usando `ShapeGeometry` ou `TorusGeometry`)
-- Posicao das sobrancelhas
 
 ---
 
@@ -162,144 +30,265 @@ Implementar atraves de:
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/components/avatar/AvatarModel.tsx` | Reescrever com novo modelo anatomico |
-| `src/components/ar/ARAvatarWithSign.tsx` | Atualizar para usar novo modelo |
-| `src/components/avatar/AvatarCustomizer.tsx` | Adicionar novas opcoes de personalizacao |
-| `src/components/avatar/AvatarGenerator.tsx` | Atualizar tipo AvatarConfig |
+| `src/types/qr-visual-config.ts` | Adicionar campos para logo central |
+| `src/components/reminders/QRCodeCanvas.tsx` | Usar imageSettings do qrcode.react |
+| `src/components/reminders/QRCodeControls.tsx` | Adicionar secao de upload do logo |
+| `src/components/reminders/QRCodeVisualEditor.tsx` | Gerenciar estado do logo central |
 
 ---
 
-### Novos Arquivos
+### Atualizacao do QRVisualConfig
 
-| Arquivo | Descricao |
-|---------|-----------|
-| `src/components/avatar/parts/HeadGeometry.tsx` | Componente para cabeca com formatos |
-| `src/components/avatar/parts/HairStyles.tsx` | Todos os estilos de cabelo |
-| `src/components/avatar/parts/Accessories.tsx` | Oculos, chapeus, brincos |
-| `src/components/avatar/parts/FacialFeatures.tsx` | Olhos, nariz, boca, expressoes |
-| `src/components/avatar/parts/FacialHair.tsx` | Barba, bigode, cavanhaque |
-| `src/components/avatar/parts/Body.tsx` | Corpo com diferentes estilos |
+```typescript
+export interface QRVisualConfig {
+  // Cores (existente)
+  foreground: string;
+  background: string;
+  
+  // Posicionamento do QR (existente)
+  position: { x: number; y: number };
+  size: number;
+  rotation: number;
+  opacity: number;
+  
+  // Imagem de fundo (existente)
+  baseImageUrl?: string;
+  
+  // NOVO - Logo no centro do QR
+  centerLogoUrl?: string;
+  centerLogoSize?: number; // Percentual do tamanho do QR (10-40%)
+}
+
+export const defaultQRVisualConfig: QRVisualConfig = {
+  foreground: "#7c3aed",
+  background: "#ffffff",
+  position: { x: 50, y: 50 },
+  size: 150,
+  rotation: 0,
+  opacity: 1,
+  centerLogoSize: 25, // 25% do QR por padrao
+};
+```
+
+---
+
+### Implementacao no QRCodeCanvas
+
+O componente `QRCodeSVG` do qrcode.react suporta a prop `imageSettings`:
+
+```typescript
+<QRCodeSVG
+  value={qrUrl}
+  size={config.size}
+  fgColor={config.foreground}
+  bgColor={config.background}
+  level="H" // Aumentar para "H" quando usar logo (mais redundancia)
+  includeMargin={false}
+  imageSettings={centerLogoUrl ? {
+    src: centerLogoUrl,
+    height: logoPixelSize,
+    width: logoPixelSize,
+    excavate: true, // Remove os pixels do QR atras do logo
+  } : undefined}
+/>
+```
+
+**Nota importante:** Quando um logo e adicionado, o nivel de correcao de erro deve ser aumentado para "H" (High - 30%) para garantir que o QR continue escaneavel mesmo com o logo no centro.
+
+---
+
+### Nova Secao no QRCodeControls
+
+```text
++------------------------------------------+
+|  Controles                               |
++------------------------------------------+
+|                                          |
+|  Tamanho         [=========|---] 150px   |
+|  Opacidade       [=========|---] 100%    |
+|  Rotacao         [---|=========] 0°      |
+|                                          |
+|  -- Cores do QR Code --                  |
+|  [■] Codigo    [■] Fundo                 |
+|                                          |
+|  -- Imagem de Fundo --                   |  <-- Existente
+|  [Upload Imagem]                         |
+|  Imagem carregada ✓                      |
+|                                          |
+|  -- Logo Central --                      |  <-- NOVO
+|  [Upload Logo]  [Remover]                |
+|  [Preview do logo]                       |
+|  Tamanho: [====|------] 25%              |
+|                                          |
+|  [Baixar Imagem]                         |
+|  [Resetar]                               |
++------------------------------------------+
+```
 
 ---
 
 ### Detalhes Tecnicos
 
-#### Novo AvatarConfig Completo
+#### 1. Prop imageSettings do qrcode.react
 
 ```typescript
-export interface AvatarConfig {
-  // Cores
-  skinColor: string;
-  hairColor: string;
-  eyeColor: string;
-  
-  // Cabelo
-  hairStyle: "short" | "medium" | "long" | "curly" | "ponytail" | "mohawk" | "bald";
-  
-  // Rosto
-  faceShape: "round" | "oval" | "square" | "heart";
-  
-  // Expressao
-  expression: "happy" | "neutral" | "surprised" | "wink";
-  
-  // Acessorios
-  hasGlasses: boolean;
-  glassesStyle: "round" | "square" | "cat-eye" | "aviator";
-  
-  hasHat: boolean;
-  hatStyle: "cap" | "beanie" | "cowboy" | "none";
-  
-  hasEarrings: boolean;
-  
-  hasFacialHair: boolean;
-  facialHairStyle: "beard" | "goatee" | "mustache" | "stubble" | "none";
-  
-  // Corpo
-  bodyStyle: "slim" | "average" | "athletic";
+interface ImageSettings {
+  src: string;        // URL ou base64 da imagem
+  x?: number;         // Posicao X (opcional, centraliza por padrao)
+  y?: number;         // Posicao Y (opcional, centraliza por padrao)
+  height: number;     // Altura em pixels
+  width: number;      // Largura em pixels
+  excavate?: boolean; // Remove pixels do QR sob a imagem
 }
 ```
 
-#### Estrutura de Componentes
+#### 2. Calculo do tamanho do logo
 
-```text
-AvatarModel.tsx
-  |
-  +-- HeadGeometry (formato do rosto)
-  |     +-- FacialFeatures (olhos, nariz, boca)
-  |     +-- Ears
-  |
-  +-- HairStyles (cabelo selecionado)
-  |
-  +-- Accessories
-  |     +-- Glasses (se habilitado)
-  |     +-- Hat (se habilitado)
-  |     +-- Earrings (se habilitado)
-  |
-  +-- FacialHair (se habilitado)
-  |
-  +-- Body (estilo selecionado)
+```typescript
+// Tamanho do logo em pixels baseado no percentual
+const logoPixelSize = Math.round(
+  (config.size * (config.centerLogoSize || 25)) / 100
+);
+```
+
+#### 3. Nivel de correcao de erro
+
+| Nivel | Redundancia | Uso |
+|-------|-------------|-----|
+| L (Low) | ~7% | QR sem logo |
+| M (Medium) | ~15% | Padrao atual |
+| Q (Quartile) | ~25% | Logo pequeno |
+| H (High) | ~30% | Logo grande (recomendado) |
+
+#### 4. Exportacao da imagem com logo
+
+Na funcao `exportAsImage`, o logo ja sera incluido automaticamente pois faz parte do SVG renderizado.
+
+---
+
+### Interface do QRCodeControls Atualizada
+
+```typescript
+interface QRCodeControlsProps {
+  config: QRVisualConfig;
+  onChange: (updates: Partial<QRVisualConfig>) => void;
+  onUploadImage: (file: File) => void;        // Existente (fundo)
+  onUploadCenterLogo: (file: File) => void;   // NOVO
+  onRemoveCenterLogo: () => void;             // NOVO
+  onDownload: () => void;
+  onReset: () => void;
+  isDownloading?: boolean;
+  centerLogo: string | null;                  // NOVO
+}
 ```
 
 ---
 
-### Novo Customizador (UI)
+### Validacoes e Limites
 
-Reorganizar o customizador em abas/secoes:
+1. **Tamanho do logo:** 10% a 40% do QR (evitar cobrir muito do codigo)
+2. **Formatos aceitos:** PNG, JPG, SVG (PNG com transparencia recomendado)
+3. **Tamanho do arquivo:** Limite de 500KB para evitar base64 muito grande
+4. **Proporcao:** Manter aspecto quadrado para melhor resultado
 
-```text
-+------------------------------------------+
-|  [Cores]  [Rosto]  [Cabelo]  [Acessorios]|
-+------------------------------------------+
+---
 
-SECAO CORES:
-- Tom de pele (paleta)
-- Cor do cabelo (paleta)
-- Cor dos olhos (paleta)
+### Fluxo do Usuario
 
-SECAO ROSTO:
-- Formato do rosto (botoes com icones)
-- Expressao (botoes com icones)
+1. Usuario acessa personalizacao do QR
+2. Faz upload de imagem de fundo (opcional)
+3. Faz upload do logo central (nova opcao)
+4. Ajusta tamanho do logo (slider 10-40%)
+5. Visualiza preview em tempo real
+6. Salva ou faz download
 
-SECAO CABELO:
-- Estilo do cabelo (grid visual)
+---
 
-SECAO ACESSORIOS:
-- Oculos (toggle + estilo)
-- Chapeu (toggle + estilo)
-- Brincos (toggle)
-- Pelos faciais (toggle + estilo)
+### Codigo da Secao "Logo Central" no Controls
+
+```typescript
+{/* Logo Central */}
+<div className="space-y-3">
+  <Label className="text-sm font-medium">Logo Central</Label>
+  
+  {centerLogo ? (
+    <div className="space-y-3">
+      {/* Preview do logo */}
+      <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
+        <img
+          src={centerLogo}
+          alt="Logo"
+          className="w-12 h-12 object-contain rounded"
+        />
+        <div className="flex-1 text-xs text-muted-foreground">
+          Logo carregado
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onRemoveCenterLogo}
+        >
+          <X className="w-4 h-4" />
+        </Button>
+      </div>
+      
+      {/* Tamanho do logo */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs text-muted-foreground">Tamanho do Logo</Label>
+          <span className="text-xs text-muted-foreground">
+            {config.centerLogoSize || 25}%
+          </span>
+        </div>
+        <Slider
+          value={[config.centerLogoSize || 25]}
+          onValueChange={([value]) => onChange({ centerLogoSize: value })}
+          min={10}
+          max={40}
+          step={5}
+        />
+      </div>
+    </div>
+  ) : (
+    <label className="flex-1">
+      <input
+        type="file"
+        accept="image/*"
+        onChange={handleLogoChange}
+        className="sr-only"
+      />
+      <Button variant="outline" className="w-full" asChild>
+        <span>
+          <ImagePlus className="w-4 h-4 mr-2" />
+          Adicionar Logo
+        </span>
+      </Button>
+    </label>
+  )}
+  
+  <p className="text-xs text-muted-foreground">
+    Adicione seu logo ou marca no centro do QR Code
+  </p>
+</div>
 ```
 
 ---
 
-### Compatibilidade com Banco de Dados
+### Resumo das Mudancas
 
-O campo `avatar_config` na tabela `profiles` e do tipo `jsonb`, portanto novos campos serao automaticamente suportados. Os avatares existentes continuarao funcionando com valores padrao para os novos campos.
-
----
-
-### Animacoes Melhoradas
-
-Para o avatar AR:
-- Piscar de olhos periodico
-- Leve movimento de respiracao no corpo
-- Cabelo com leve balanco
-- Brincos com fisica simples
+| Componente | Mudanca |
+|------------|---------|
+| `QRVisualConfig` | +2 campos: `centerLogoUrl`, `centerLogoSize` |
+| `QRCodeCanvas` | Usar `imageSettings` e nivel "H" |
+| `QRCodeControls` | Nova secao de upload de logo |
+| `QRCodeVisualEditor` | Gerenciar estado `centerLogo` |
 
 ---
 
-### Resumo das Melhorias
+### Beneficios
 
-| Aspecto | Antes | Depois |
-|---------|-------|--------|
-| Formatos de rosto | 1 (esfera) | 4 opcoes |
-| Estilos de cabelo | 4 | 7 opcoes |
-| Tipos de oculos | 1 | 4 opcoes |
-| Chapeus | 0 | 3 opcoes |
-| Pelos faciais | 0 | 4 opcoes |
-| Expressoes | 1 | 4 opcoes |
-| Estilos de corpo | 1 | 3 opcoes |
-| Brincos | Nao | Sim |
-
-**Total de combinacoes possiveis:** Mais de 10.000 avatares unicos!
+1. **Branding:** Usuarios podem adicionar sua marca ao QR
+2. **Profissionalismo:** QR codes mais atrativos e personalizados
+3. **Compatibilidade:** qrcode.react ja suporta nativamente
+4. **Escaneabilidade:** Nivel H garante leitura mesmo com logo
 
