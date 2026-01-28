@@ -1,357 +1,441 @@
 
-## Melhorias no Menu de Conta e Avatares Cartoon
+
+## Configurações de Conta e Dashboard de Analytics
 
 ### Visao Geral
 
-Este plano aborda tres melhorias principais:
+Este plano aborda duas funcionalidades principais:
 
-1. **Menu da Conta** - Adicionar opcoes para gerenciar locais cadastrados
-2. **Visualizacao de Avatar** - Criar modo de visualizacao antes de permitir edicao
-3. **Estilo Cartoon** - Melhorar visual dos avatares 3D com estilo mais cartoon/estilizado
-
----
-
-### Parte 1: Gerenciamento de Locais no Menu
-
-#### Novos Arquivos
-
-| Arquivo | Descricao |
-|---------|-----------|
-| `src/components/locations/LocationsManagementDialog.tsx` | Dialog para visualizar/editar locais |
-| `src/pages/Locations.tsx` | Pagina dedicada para gerenciamento de locais (opcional) |
-
-#### Modificacoes no DashboardHeader
-
-Adicionar novas opcoes ao dropdown menu:
-
-```text
-+----------------------------------+
-|  Nome do Usuario                 |
-|  email@example.com               |
-+----------------------------------+
-|  [User] Meu Avatar               |  <-- Modificar para VIEW primeiro
-|  [MapPin] Meus Locais            |  <-- NOVO
-|  [Settings] Configuracoes        |
-+----------------------------------+
-|  [LogOut] Sair                   |
-+----------------------------------+
-```
-
-#### LocationsManagementDialog
-
-Interface para visualizar e editar locais:
-
-```text
-+--------------------------------------------------+
-|  Meus Locais                              [X]    |
-+--------------------------------------------------+
-|  [+ Novo Local]                                  |
-|                                                  |
-|  +--------------------------------------------+  |
-|  | Sala de Reunioes A                         |  |
-|  | Bloco B, 2o andar                          |  |
-|  | [Editar] [Excluir]                         |  |
-|  +--------------------------------------------+  |
-|                                                  |
-|  +--------------------------------------------+  |
-|  | Cafeteira                                  |  |
-|  | Direcao                                    |  |
-|  | [Editar] [Excluir]                         |  |
-|  +--------------------------------------------+  |
-|                                                  |
-+--------------------------------------------------+
-```
-
-Funcionalidades:
-- Lista todos os locais do usuario
-- Botao para criar novo local (abre LocationFormDialog existente)
-- Botao para editar cada local
-- Botao para excluir com confirmacao
-- Contador de lembretes vinculados a cada local
+1. **Menu de Configurações** - Implementar dialog funcional para alterar nome, email e senha
+2. **Dashboard de Analytics** - Criar sistema de rastreamento de visitas aos QR Codes com gráficos
 
 ---
 
-### Parte 2: Pagina de Avatar com Modo de Visualizacao
+### Parte 1: Menu de Configurações
 
-#### Nova Rota
+#### Problema Atual
+
+O botão "Configurações" no menu não possui um handler `onClick`, apenas renderiza o ícone e texto:
 
 ```typescript
-// App.tsx
-<Route path="/my-avatar" element={<MyAvatar />} />
+// Linha 98-101 do DashboardHeader.tsx (atual)
+<DropdownMenuItem>
+  <Settings className="w-4 h-4 mr-2" />
+  Configurações
+</DropdownMenuItem>
 ```
 
-#### Novo Arquivo: MyAvatar.tsx
+#### Novo Componente: SettingsDialog
 
-Pagina com dois modos:
+Interface com abas para cada tipo de configuração:
 
-**Modo VIEW (padrao)**
 ```text
 +--------------------------------------------------+
-|  [<- Voltar]                   Meu Avatar 3D     |
+|  Configurações da Conta                   [X]    |
++--------------------------------------------------+
+|  [Perfil]  [Email]  [Senha]                      |
 +--------------------------------------------------+
 |                                                  |
-|         +------------------------+               |
-|         |                        |               |
-|         |   [Avatar 3D Preview]  |               |
-|         |     (rotacionavel)     |               |
-|         |                        |               |
-|         +------------------------+               |
+|  -- PERFIL (aba selecionada) --                  |
 |                                                  |
-|         Nome do Usuario                          |
+|  Nome                                            |
+|  [João Victor Almeida Santos Pascon    ]         |
 |                                                  |
-|         Caracteristicas:                         |
-|         - Cabelo: Rabo de Cavalo, Castanho       |
-|         - Rosto: Coracao                         |
-|         - Expressao: Feliz                       |
-|         - Acessorios: Oculos, Chapeu             |
-|                                                  |
-|         [Editar Avatar]                          |
+|  [Salvar Alterações]                             |
 |                                                  |
 +--------------------------------------------------+
 ```
 
-**Modo EDIT**
-- Reutiliza AvatarCustomizer existente
-- Botao "Salvar" e "Cancelar"
-- Preview em tempo real
+```text
++--------------------------------------------------+
+|  Configurações da Conta                   [X]    |
++--------------------------------------------------+
+|  [Perfil]  [Email]  [Senha]                      |
++--------------------------------------------------+
+|                                                  |
+|  -- EMAIL (aba selecionada) --                   |
+|                                                  |
+|  Email atual: joaovpascon@gmail.com              |
+|                                                  |
+|  Novo Email                                      |
+|  [                                      ]        |
+|                                                  |
+|  Senha atual (confirmação)                       |
+|  [                                      ]        |
+|                                                  |
+|  [Alterar Email]                                 |
+|                                                  |
+|  ⚠️ Um email de confirmação será enviado         |
+|                                                  |
++--------------------------------------------------+
+```
 
-#### Logica de Estado
+```text
++--------------------------------------------------+
+|  Configurações da Conta                   [X]    |
++--------------------------------------------------+
+|  [Perfil]  [Email]  [Senha]                      |
++--------------------------------------------------+
+|                                                  |
+|  -- SENHA (aba selecionada) --                   |
+|                                                  |
+|  Senha atual                                     |
+|  [••••••••                              ]        |
+|                                                  |
+|  Nova senha                                      |
+|  [                                      ]        |
+|  [Indicador de força da senha]                   |
+|                                                  |
+|  Confirmar nova senha                            |
+|  [                                      ]        |
+|                                                  |
+|  [Alterar Senha]                                 |
+|                                                  |
++--------------------------------------------------+
+```
+
+#### Funcoes do Supabase Auth Utilizadas
 
 ```typescript
-const [mode, setMode] = useState<"view" | "edit">("view");
-const [originalConfig, setOriginalConfig] = useState<AvatarConfig | null>(null);
-
-// Ao clicar em "Editar"
-const handleStartEdit = () => {
-  setOriginalConfig({...avatarConfig}); // Salvar backup
-  setMode("edit");
+// Alterar nome (profiles table)
+const updateName = async (newName: string) => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autenticado");
+  
+  const { error } = await supabase
+    .from("profiles")
+    .update({ name: newName })
+    .eq("user_id", user.id);
+    
+  if (error) throw error;
 };
 
-// Ao clicar em "Cancelar"
-const handleCancelEdit = () => {
-  if (originalConfig) setAvatarConfig(originalConfig);
-  setMode("view");
+// Alterar email (necessita confirmação)
+const updateEmail = async (newEmail: string) => {
+  const { error } = await supabase.auth.updateUser({
+    email: newEmail,
+  });
+  if (error) throw error;
+  // Email de confirmação será enviado automaticamente
+};
+
+// Alterar senha
+const updatePassword = async (newPassword: string) => {
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+  if (error) throw error;
 };
 ```
 
-#### Atualizacao do Menu
+#### Arquivos a Criar/Modificar
 
-Mudar "Meu Avatar" para navegar para `/my-avatar` ao inves de `/create-avatar`
-
----
-
-### Parte 3: Melhorias Visuais - Estilo Cartoon
-
-#### Conceito Visual
-
-Transformar avatares de "low-poly realista" para "cartoon estilizado":
-
-```text
-ANTES (atual):               DEPOIS (cartoon):
-    ___                          ____
-   /   \                        /    \
-  | . . |                      ( O  O )
-  |  >  |      -->             (  <>  )
-  | --- |                      ( \__/ )
-   \___/                        \____/
-                               
-Proporcoes realistas          Proporcoes exageradas
-Cores sutis                   Cores vibrantes
-Formas naturais               Formas arredondadas
-```
-
-#### Mudancas Especificas
-
-**1. Cabeca (HeadGeometry.tsx)**
-
-```typescript
-// ANTES: Cabeca proporcional
-<sphereGeometry args={[0.65, 32, 32]} />
-
-// DEPOIS: Cabeca maior e mais arredondada (estilo chibi/cartoon)
-<sphereGeometry args={[0.75, 32, 32]} />
-// Proporcao cabeca:corpo aumentada de 1:3 para 1:2
-```
-
-**2. Olhos (FacialFeatures.tsx)**
-
-```typescript
-// ANTES: Olhos pequenos e realistas
-<sphereGeometry args={[0.12, 16, 16]} />
-
-// DEPOIS: Olhos grandes e expressivos (estilo anime/cartoon)
-<sphereGeometry args={[0.18, 16, 16]} />
-// Pupilas maiores com brilho mais intenso
-// Adicionar "sparkle" (brilho estelar) nos olhos
-```
-
-**3. Corpo (Body.tsx)**
-
-```typescript
-// ANTES: Corpo proporcional
-position={[0, 0.45, 0]}
-
-// DEPOIS: Corpo menor em relacao a cabeca
-position={[0, 0.3, 0]}
-// Bracos mais curtos e arredondados
-// Maos como "luvas" estilo Mickey Mouse
-```
-
-**4. Materiais Cartoon**
-
-```typescript
-// Material com shader toon/cel-shading
-const cartoonMaterial = new THREE.MeshToonMaterial({
-  color: config.skinColor,
-  gradientMap: toonGradient, // 3 tons de cor
-});
-```
-
-**5. Outlines (Contornos)**
-
-Adicionar contornos pretos ao redor das formas para efeito cartoon:
-
-```typescript
-// Usando segunda mesh com escala ligeiramente maior
-<mesh scale={[1.02, 1.02, 1.02]}>
-  <sphereGeometry args={[0.75, 32, 32]} />
-  <meshBasicMaterial color="#000000" side={THREE.BackSide} />
-</mesh>
-```
-
-#### Proporcoes Cartoon
-
-| Parte | Antes | Depois |
-|-------|-------|--------|
-| Cabeca | 0.65 raio | 0.80 raio |
-| Olhos | 0.12 raio | 0.20 raio |
-| Corpo altura | 0.9 | 0.7 |
-| Maos | Esferas simples | Maos "luva" com 4 dedos visíveis |
-| Pescoco | 0.2 altura | 0.12 altura (mais curto) |
-
-#### Expressoes Mais Exageradas
-
-```typescript
-// Expressao feliz - sorriso maior
-const getMouthProps = () => {
-  switch (config.expression) {
-    case "happy":
-      return { 
-        type: "bigSmile", 
-        scale: 1.5,  // Sorriso 50% maior
-        showTeeth: true 
-      };
-    // ...
-  }
-};
-```
-
----
-
-### Arquivos a Criar
-
-| Arquivo | Descricao |
-|---------|-----------|
-| `src/components/locations/LocationsManagementDialog.tsx` | Gerenciamento de locais |
-| `src/components/locations/LocationEditDialog.tsx` | Edicao de local individual |
-| `src/pages/MyAvatar.tsx` | Pagina de visualizacao/edicao de avatar |
-
-### Arquivos a Modificar
-
-| Arquivo | Mudanca |
+| Arquivo | Mudança |
 |---------|---------|
-| `src/components/dashboard/DashboardHeader.tsx` | Adicionar "Meus Locais", mudar link do avatar |
-| `src/App.tsx` | Adicionar rota `/my-avatar` |
-| `src/hooks/useLocations.ts` | Ja tem updateLocation e deleteLocation (ok) |
-| `src/components/avatar/parts/HeadGeometry.tsx` | Proporcoes cartoon |
-| `src/components/avatar/parts/FacialFeatures.tsx` | Olhos maiores, expressoes exageradas |
-| `src/components/avatar/parts/Body.tsx` | Corpo menor, maos cartoon |
-| `src/components/avatar/parts/HairStyles.tsx` | Cabelos mais volumosos |
-| `src/components/avatar/AvatarModel.tsx` | Adicionar outline/contorno |
+| `src/components/settings/SettingsDialog.tsx` | NOVO - Dialog principal com abas |
+| `src/components/settings/ProfileSettings.tsx` | NOVO - Aba de perfil (nome) |
+| `src/components/settings/EmailSettings.tsx` | NOVO - Aba de alteração de email |
+| `src/components/settings/PasswordSettings.tsx` | NOVO - Aba de alteração de senha |
+| `src/components/dashboard/DashboardHeader.tsx` | Adicionar onClick e state para SettingsDialog |
 
 ---
 
-### Detalhes Tecnicos - LocationsManagementDialog
+### Parte 2: Dashboard de Analytics
+
+#### Estrutura de Dados
+
+Criar nova tabela `qr_visits` para rastrear visualizações:
+
+```sql
+CREATE TABLE public.qr_visits (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  reminder_id UUID NOT NULL REFERENCES public.reminders(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL, -- Dono do QR (para RLS)
+  visited_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  view_mode TEXT, -- 'card' | 'ar' | 'select'
+  user_agent TEXT, -- Navegador/dispositivo
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- RLS para que donos vejam apenas suas visitas
+ALTER TABLE public.qr_visits ENABLE ROW LEVEL SECURITY;
+
+-- Política de INSERT público (qualquer um pode registrar visita)
+CREATE POLICY "Anyone can insert visits"
+  ON public.qr_visits FOR INSERT
+  WITH CHECK (true);
+
+-- Política de SELECT para donos
+CREATE POLICY "Users can view visits to their reminders"
+  ON public.qr_visits FOR SELECT
+  USING (auth.uid() = user_id);
+```
+
+#### Fluxo de Registro de Visitas
+
+Quando alguém acessa `/ar/:reminderId`:
 
 ```typescript
-interface LocationsManagementDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+// Em ARPreview.tsx, após carregar o reminder:
+const logVisit = async (reminderId: string, userId: string, viewMode: string) => {
+  await supabase.from("qr_visits").insert({
+    reminder_id: reminderId,
+    user_id: userId, // ID do DONO do QR, não do visitante
+    view_mode: viewMode,
+    user_agent: navigator.userAgent,
+  });
+};
+```
+
+#### Nova Página: Analytics Dashboard
+
+Criar nova rota `/analytics` ou usar abas na página principal:
+
+```text
++------------------------------------------------------------------+
+|  [Logo]  AR Lembretes                              [Menu Usuario] |
++------------------------------------------------------------------+
+|                                                                  |
+|  [Meus Lembretes]  [Analytics]  <-- Toggle/Tabs                  |
+|                                                                  |
++------------------------------------------------------------------+
+|                                                                  |
+|  Visão Geral dos QR Codes                                        |
+|                                                                  |
+|  +-------------+  +-------------+  +-------------+               |
+|  | Total de    |  | Visitas     |  | Média por   |               |
+|  | Visitas     |  | Este Mês    |  | QR Code     |               |
+|  |   247       |  |    89       |  |   12.3      |               |
+|  +-------------+  +-------------+  +-------------+               |
+|                                                                  |
+|  Visitas nos Últimos 30 Dias                                     |
+|  +----------------------------------------------------------+    |
+|  |     ^                                                    |    |
+|  |  25 |        ____                                        |    |
+|  |     |   ____/    \____                                   |    |
+|  |  15 |__/               \____        ____                 |    |
+|  |     |                       \______/    \____            |    |
+|  |   5 |                                        \____       |    |
+|  |     +---------------------------------------------->     |    |
+|  |       Jan 1   Jan 8   Jan 15   Jan 22   Jan 28          |    |
+|  +----------------------------------------------------------+    |
+|                                                                  |
+|  Estatísticas por QR Code                                        |
+|                                                                  |
+|  +----------------------------------------------------------+    |
+|  | QR Code           | Local      | Visitas | Última Visita |    |
+|  +-------------------+------------+---------+---------------+    |
+|  | Boas Vindas       | Modok Lab  |   45    | Há 2 horas    |    |
+|  | Limpar Cafeteira  | Cafeteira  |   32    | Há 5 minutos  |    |
+|  +----------------------------------------------------------+    |
+|                                                                  |
+|  [Ver Detalhes] para cada QR individual                          |
+|                                                                  |
++------------------------------------------------------------------+
+```
+
+#### Modal de Detalhes por QR Code
+
+```text
++--------------------------------------------------+
+|  Estatísticas: Boas Vindas                [X]    |
++--------------------------------------------------+
+|                                                  |
+|  Local: Modok Lab                                |
+|  Total de Visitas: 45                            |
+|                                                  |
+|  Gráfico de Visitas (7 dias)                     |
+|  +--------------------------------------------+  |
+|  |     _____                                  |  |
+|  |    /     \                                 |  |
+|  | __/       \_____          _____            |  |
+|  |                  \________/                |  |
+|  +--------------------------------------------+  |
+|                                                  |
+|  Modo de Visualização                            |
+|  +--------------------------------------------+  |
+|  |  [====== Card 60% ======]                  |  |
+|  |  [=== AR 40% ===]                          |  |
+|  +--------------------------------------------+  |
+|                                                  |
+|  Dispositivos                                    |
+|  • Mobile: 78%                                   |
+|  • Desktop: 22%                                  |
+|                                                  |
++--------------------------------------------------+
+```
+
+#### Hook useAnalytics
+
+```typescript
+interface VisitStats {
+  totalVisits: number;
+  visitsThisMonth: number;
+  avgPerQR: number;
+  visitsByDay: { date: string; count: number }[];
+  visitsByQR: {
+    reminderId: string;
+    title: string;
+    location: string | null;
+    totalVisits: number;
+    lastVisit: string | null;
+  }[];
 }
 
-// Componente usa useLocations hook existente
-const { locations, updateLocation, deleteLocation, createLocation } = useLocations();
+export function useAnalytics() {
+  const [stats, setStats] = useState<VisitStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchStats = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Buscar todas as visitas do usuário
+    const { data: visits } = await supabase
+      .from("qr_visits")
+      .select(`
+        *,
+        reminders (
+          id,
+          title,
+          locations (name)
+        )
+      `)
+      .eq("user_id", user.id)
+      .order("visited_at", { ascending: false });
+
+    // Processar dados para estatísticas
+    // ...
+  };
+
+  return { stats, isLoading, refetch: fetchStats };
+}
 ```
 
-**Funcionalidades:**
-- Listar locais com ScrollArea para muitos itens
-- Editar inline ou em dialog separado
-- Excluir com AlertDialog de confirmacao
-- Mostrar badge com numero de lembretes vinculados
+#### Arquivos a Criar
+
+| Arquivo | Descrição |
+|---------|-----------|
+| `src/pages/Analytics.tsx` | Página principal de analytics |
+| `src/hooks/useAnalytics.ts` | Hook para buscar e processar dados |
+| `src/components/analytics/OverviewStats.tsx` | Cards com totais |
+| `src/components/analytics/VisitsChart.tsx` | Gráfico de linha (recharts) |
+| `src/components/analytics/QRCodeTable.tsx` | Tabela com stats por QR |
+| `src/components/analytics/QRDetailDialog.tsx` | Modal com detalhes |
+
+#### Arquivos a Modificar
+
+| Arquivo | Mudança |
+|---------|---------|
+| `src/pages/ARPreview.tsx` | Adicionar logVisit() ao carregar QR |
+| `src/pages/Index.tsx` | Adicionar tabs ou link para Analytics |
+| `src/App.tsx` | Adicionar rota `/analytics` |
+| `src/components/dashboard/DashboardHeader.tsx` | Adicionar link Dashboard no menu |
 
 ---
 
-### Detalhes Tecnicos - MyAvatar Page
+### Migração de Banco de Dados
+
+```sql
+-- Criar tabela de visitas
+CREATE TABLE public.qr_visits (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  reminder_id UUID NOT NULL REFERENCES public.reminders(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL,
+  visited_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  view_mode TEXT CHECK (view_mode IN ('select', 'card', 'ar')),
+  user_agent TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Índices para performance
+CREATE INDEX idx_qr_visits_reminder_id ON public.qr_visits(reminder_id);
+CREATE INDEX idx_qr_visits_user_id ON public.qr_visits(user_id);
+CREATE INDEX idx_qr_visits_visited_at ON public.qr_visits(visited_at);
+
+-- Habilitar RLS
+ALTER TABLE public.qr_visits ENABLE ROW LEVEL SECURITY;
+
+-- Política de INSERT (público - visitantes anônimos podem registrar)
+CREATE POLICY "Anyone can insert visits"
+  ON public.qr_visits FOR INSERT
+  WITH CHECK (true);
+
+-- Política de SELECT (apenas donos veem suas visitas)
+CREATE POLICY "Users can view visits to their reminders"
+  ON public.qr_visits FOR SELECT
+  USING (auth.uid() = user_id);
+```
+
+---
+
+### Gráficos com Recharts
+
+Usar a biblioteca recharts já instalada:
 
 ```typescript
-const MyAvatar = () => {
-  const { profile, isLoading } = useProfile();
-  const [mode, setMode] = useState<"view" | "edit">("view");
-  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  
-  // Carregar config do perfil
-  useEffect(() => {
-    if (profile?.avatar_config) {
-      setAvatarConfig(normalizeAvatarConfig(profile.avatar_config));
-    } else {
-      setAvatarConfig(getDefaultAvatarConfig());
-    }
-  }, [profile]);
-  
-  // Renderizar VIEW ou EDIT mode
-  return mode === "view" ? (
-    <AvatarViewMode config={avatarConfig} onEdit={() => setMode("edit")} />
-  ) : (
-    <AvatarEditMode 
-      config={avatarConfig} 
-      onChange={setAvatarConfig}
-      onSave={handleSave}
-      onCancel={() => setMode("view")}
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+
+// Dados processados
+const chartData = [
+  { date: "Jan 22", visits: 12 },
+  { date: "Jan 23", visits: 8 },
+  { date: "Jan 24", visits: 15 },
+  // ...
+];
+
+// Componente
+<ResponsiveContainer width="100%" height={300}>
+  <LineChart data={chartData}>
+    <XAxis dataKey="date" />
+    <YAxis />
+    <Tooltip />
+    <Line 
+      type="monotone" 
+      dataKey="visits" 
+      stroke="#7c3aed" 
+      strokeWidth={2}
     />
-  );
-};
+  </LineChart>
+</ResponsiveContainer>
 ```
 
 ---
 
-### Resumo de Mudancas
+### Resumo das Mudanças
 
-#### Menu da Conta
-- Nova opcao "Meus Locais" no dropdown
-- Dialog para visualizar/editar/excluir locais
-- Link "Meu Avatar" agora vai para pagina de visualizacao
+#### Configurações (Parte 1)
 
-#### Avatar
-- Nova pagina `/my-avatar` com modo VIEW primeiro
-- Usuario ve seu avatar antes de decidir editar
-- Mostra informacoes do avatar (cabelo, acessorios, etc.)
-- Botao "Editar" para entrar no modo de edicao
+| Tipo | Arquivo |
+|------|---------|
+| NOVO | `src/components/settings/SettingsDialog.tsx` |
+| NOVO | `src/components/settings/ProfileSettings.tsx` |
+| NOVO | `src/components/settings/EmailSettings.tsx` |
+| NOVO | `src/components/settings/PasswordSettings.tsx` |
+| MOD | `src/components/dashboard/DashboardHeader.tsx` |
 
-#### Estilo Cartoon
-- Cabeca maior (proporcao chibi)
-- Olhos grandes e expressivos com brilho
-- Corpo menor e mais fofo
-- Contornos pretos para efeito cartoon
-- Cores mais vibrantes
-- Expressoes mais exageradas
-- Maos estilo luva de desenho animado
+#### Analytics (Parte 2)
+
+| Tipo | Arquivo |
+|------|---------|
+| NOVO | `src/pages/Analytics.tsx` |
+| NOVO | `src/hooks/useAnalytics.ts` |
+| NOVO | `src/components/analytics/OverviewStats.tsx` |
+| NOVO | `src/components/analytics/VisitsChart.tsx` |
+| NOVO | `src/components/analytics/QRCodeTable.tsx` |
+| NOVO | `src/components/analytics/QRDetailDialog.tsx` |
+| MOD | `src/pages/ARPreview.tsx` - log de visitas |
+| MOD | `src/pages/Index.tsx` - tabs/link |
+| MOD | `src/App.tsx` - rota /analytics |
+| MOD | `src/components/dashboard/DashboardHeader.tsx` - menu |
+| DB | Criar tabela `qr_visits` + RLS |
 
 ---
 
-### Beneficios
+### Benefícios
 
-1. **UX Melhorada** - Usuarios podem gerenciar locais sem sair do dashboard
-2. **Visualizacao Primeiro** - Ver avatar antes de editar previne edicoes acidentais
-3. **Estilo Atrativo** - Avatares cartoon sao mais cativantes e memoraveis
-4. **Consistencia** - Estilo cartoon combina melhor com a proposta ludica do app AR
+1. **Configurações Funcionais** - Usuários podem atualizar seus dados de conta
+2. **Insights de Uso** - Donos de QR Codes sabem quantas pessoas acessaram
+3. **Decisões Baseadas em Dados** - Identificar QR Codes mais/menos populares
+4. **Segurança** - Visitantes são anônimos, apenas totais são mostrados
+
