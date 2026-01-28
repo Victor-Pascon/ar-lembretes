@@ -1,10 +1,13 @@
 import { useCallback, useState, useRef, Suspense } from "react";
 import Webcam from "react-webcam";
 import { Canvas } from "@react-three/fiber";
+import { OrbitControls } from "@react-three/drei";
 import { Button } from "@/components/ui/button";
-import { X, Info, Camera, AlertCircle } from "lucide-react";
+import { X, Info, Camera, AlertCircle, SlidersHorizontal, HelpCircle } from "lucide-react";
 import { AvatarConfig } from "@/components/avatar/AvatarModel";
 import ARAvatarWithSign from "./ARAvatarWithSign";
+import ARControlsOverlay from "./ARControlsOverlay";
+import ARGestureHint from "./ARGestureHint";
 import {
   Sheet,
   SheetContent,
@@ -33,6 +36,9 @@ const ARCameraView = ({
 }: ARCameraViewProps) => {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
+  const [avatarScale, setAvatarScale] = useState(1);
+  const [showControls, setShowControls] = useState(false);
+  const [showGestureHint, setShowGestureHint] = useState(true);
   const webcamRef = useRef<Webcam>(null);
 
   const handleCameraError = useCallback((error: string | DOMException) => {
@@ -118,11 +124,36 @@ const ARCameraView = ({
             <directionalLight position={[-5, 5, 5]} intensity={0.5} />
             <pointLight position={[0, 2, 3]} intensity={0.5} />
             
+            <OrbitControls
+              enablePan={true}
+              enableZoom={true}
+              enableRotate={true}
+              minDistance={3}
+              maxDistance={8}
+              target={[0, 1, 0]}
+              maxPolarAngle={Math.PI / 1.5}
+              minPolarAngle={Math.PI / 4}
+            />
+            
             <Suspense fallback={null}>
-              <ARAvatarWithSign config={avatarConfig} message={message} />
+              <ARAvatarWithSign config={avatarConfig} message={message} scale={avatarScale} />
             </Suspense>
           </Canvas>
         </div>
+      )}
+
+      {/* Gesture hint for first-time users */}
+      {isCameraReady && showGestureHint && (
+        <ARGestureHint onDismiss={() => setShowGestureHint(false)} />
+      )}
+
+      {/* Controls overlay */}
+      {isCameraReady && showControls && (
+        <ARControlsOverlay
+          scale={avatarScale}
+          onScaleChange={setAvatarScale}
+          onReset={() => setAvatarScale(1)}
+        />
       )}
 
       {/* Controls overlay */}
@@ -167,6 +198,25 @@ const ARCameraView = ({
             </SheetHeader>
           </SheetContent>
         </Sheet>
+
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            size="icon"
+            className="rounded-full bg-background/80 backdrop-blur-sm shadow-lg"
+            onClick={() => setShowGestureHint(true)}
+          >
+            <HelpCircle className="w-5 h-5" />
+          </Button>
+          <Button
+            variant="secondary"
+            size="icon"
+            className={`rounded-full backdrop-blur-sm shadow-lg ${showControls ? 'bg-primary text-primary-foreground' : 'bg-background/80'}`}
+            onClick={() => setShowControls(!showControls)}
+          >
+            <SlidersHorizontal className="w-5 h-5" />
+          </Button>
+        </div>
       </div>
 
       {/* AR indicator */}
