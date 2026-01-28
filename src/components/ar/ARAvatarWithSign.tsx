@@ -12,9 +12,10 @@ import ARMessageSign from "./ARMessageSign";
 interface ARAvatarWithSignProps {
   config: AvatarConfig;
   message: string;
+  scale?: number;
 }
 
-const ARAvatarWithSign = memo(({ config, message }: ARAvatarWithSignProps) => {
+const ARAvatarWithSign = memo(({ config, message, scale = 1 }: ARAvatarWithSignProps) => {
   const groupRef = useRef<THREE.Group>(null);
   const bodyRef = useRef<THREE.Group>(null);
 
@@ -73,7 +74,7 @@ const ARAvatarWithSign = memo(({ config, message }: ARAvatarWithSignProps) => {
   const bodyProps = getBodyProps();
 
   return (
-    <group ref={groupRef} position={[0, 0, 0]}>
+    <group ref={groupRef} position={[0, 0, 0]} scale={scale}>
       {/* Head with modular parts */}
       <HeadGeometry config={config} skinMaterial={skinMaterial} />
       
