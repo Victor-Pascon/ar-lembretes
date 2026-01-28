@@ -40,6 +40,20 @@ export default function ARPreview() {
   const [viewMode, setViewMode] = useState<ViewMode>("loading");
   const [error, setError] = useState<string | null>(null);
 
+  // Log visit to database
+  const logVisit = async (reminderId: string, ownerId: string, mode: string) => {
+    try {
+      await supabase.from("qr_visits").insert({
+        reminder_id: reminderId,
+        user_id: ownerId,
+        view_mode: mode,
+        user_agent: navigator.userAgent,
+      });
+    } catch (error) {
+      console.error("Error logging visit:", error);
+    }
+  };
+
   useEffect(() => {
     async function fetchReminder() {
       if (!reminderId) {
@@ -79,6 +93,9 @@ export default function ARPreview() {
 
         setReminder(reminderData);
 
+        // Log initial visit (select mode)
+        await logVisit(reminderData.id, reminderData.user_id, "select");
+
         // Fetch creator's profile using the reminder's user_id
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
@@ -111,6 +128,21 @@ export default function ARPreview() {
 
     fetchReminder();
   }, [reminderId]);
+
+  // Log when user selects card or AR mode
+  const handleSelectCard = () => {
+    if (reminder) {
+      logVisit(reminder.id, reminder.user_id, "card");
+    }
+    setViewMode("card");
+  };
+
+  const handleSelectAR = () => {
+    if (reminder) {
+      logVisit(reminder.id, reminder.user_id, "ar");
+    }
+    setViewMode("ar");
+  };
 
   const handleClose = () => {
     navigate("/");
@@ -161,8 +193,8 @@ export default function ARPreview() {
       <ViewModeSelector
         title={reminder.title}
         location={reminder.locations?.name}
-        onSelectCard={() => setViewMode("card")}
-        onSelectAR={() => setViewMode("ar")}
+        onSelectCard={handleSelectCard}
+        onSelectAR={handleSelectAR}
       />
     );
   }
@@ -176,7 +208,7 @@ export default function ARPreview() {
         location={reminder.locations?.name}
         creatorName={profile?.name}
         onClose={handleClose}
-        onSwitchToAR={() => setViewMode("ar")}
+        onSwitchToAR={handleSelectAR}
       />
     );
   }

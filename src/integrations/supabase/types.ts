@@ -77,6 +77,44 @@ export type Database = {
         }
         Relationships: []
       }
+      qr_visits: {
+        Row: {
+          created_at: string | null
+          id: string
+          reminder_id: string
+          user_agent: string | null
+          user_id: string
+          view_mode: string | null
+          visited_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          reminder_id: string
+          user_agent?: string | null
+          user_id: string
+          view_mode?: string | null
+          visited_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          reminder_id?: string
+          user_agent?: string | null
+          user_id?: string
+          view_mode?: string | null
+          visited_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qr_visits_reminder_id_fkey"
+            columns: ["reminder_id"]
+            isOneToOne: false
+            referencedRelation: "reminders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reminders: {
         Row: {
           ar_config: Json | null

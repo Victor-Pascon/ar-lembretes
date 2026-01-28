@@ -232,7 +232,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <DashboardHeader profile={profile} />
+      <DashboardHeader profile={profile} onProfileUpdate={() => window.location.reload()} />
 
       <main className="container mx-auto px-4 py-6 space-y-8">
         {/* Stats */}
