@@ -1,294 +1,357 @@
 
-
-## Logo/Marca no Centro do QR Code
+## Melhorias no Menu de Conta e Avatares Cartoon
 
 ### Visao Geral
 
-Adicionar uma nova funcionalidade que permite inserir uma imagem (logo, marca, icone) no centro do QR Code, mantendo a funcionalidade existente de imagem de fundo.
+Este plano aborda tres melhorias principais:
+
+1. **Menu da Conta** - Adicionar opcoes para gerenciar locais cadastrados
+2. **Visualizacao de Avatar** - Criar modo de visualizacao antes de permitir edicao
+3. **Estilo Cartoon** - Melhorar visual dos avatares 3D com estilo mais cartoon/estilizado
 
 ---
 
-### Diferenca entre as duas opcoes
+### Parte 1: Gerenciamento de Locais no Menu
+
+#### Novos Arquivos
+
+| Arquivo | Descricao |
+|---------|-----------|
+| `src/components/locations/LocationsManagementDialog.tsx` | Dialog para visualizar/editar locais |
+| `src/pages/Locations.tsx` | Pagina dedicada para gerenciamento de locais (opcional) |
+
+#### Modificacoes no DashboardHeader
+
+Adicionar novas opcoes ao dropdown menu:
 
 ```text
-IMAGEM DE FUNDO (ja existe):     LOGO NO CENTRO (nova):
-+---------------------------+    +---------------------------+
-|   [imagem de fundo]       |    |                           |
-|                           |    |   ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓       |
-|     ▓▓▓▓▓▓▓▓▓             |    |   ▓▓             ▓▓       |
-|     ▓▓      ▓▓            |    |   ▓▓  [LOGO]    ▓▓       |
-|     ▓▓      ▓▓            |    |   ▓▓             ▓▓       |
-|     ▓▓▓▓▓▓▓▓▓             |    |   ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓       |
-|                           |    |                           |
-+---------------------------+    +---------------------------+
-     QR sobre a imagem              Logo dentro do QR
++----------------------------------+
+|  Nome do Usuario                 |
+|  email@example.com               |
++----------------------------------+
+|  [User] Meu Avatar               |  <-- Modificar para VIEW primeiro
+|  [MapPin] Meus Locais            |  <-- NOVO
+|  [Settings] Configuracoes        |
++----------------------------------+
+|  [LogOut] Sair                   |
++----------------------------------+
 ```
 
+#### LocationsManagementDialog
+
+Interface para visualizar e editar locais:
+
+```text
++--------------------------------------------------+
+|  Meus Locais                              [X]    |
++--------------------------------------------------+
+|  [+ Novo Local]                                  |
+|                                                  |
+|  +--------------------------------------------+  |
+|  | Sala de Reunioes A                         |  |
+|  | Bloco B, 2o andar                          |  |
+|  | [Editar] [Excluir]                         |  |
+|  +--------------------------------------------+  |
+|                                                  |
+|  +--------------------------------------------+  |
+|  | Cafeteira                                  |  |
+|  | Direcao                                    |  |
+|  | [Editar] [Excluir]                         |  |
+|  +--------------------------------------------+  |
+|                                                  |
++--------------------------------------------------+
+```
+
+Funcionalidades:
+- Lista todos os locais do usuario
+- Botao para criar novo local (abre LocationFormDialog existente)
+- Botao para editar cada local
+- Botao para excluir com confirmacao
+- Contador de lembretes vinculados a cada local
+
 ---
 
-### Arquivos a Modificar
+### Parte 2: Pagina de Avatar com Modo de Visualizacao
 
-| Arquivo | Mudanca |
-|---------|---------|
-| `src/types/qr-visual-config.ts` | Adicionar campos para logo central |
-| `src/components/reminders/QRCodeCanvas.tsx` | Usar imageSettings do qrcode.react |
-| `src/components/reminders/QRCodeControls.tsx` | Adicionar secao de upload do logo |
-| `src/components/reminders/QRCodeVisualEditor.tsx` | Gerenciar estado do logo central |
-
----
-
-### Atualizacao do QRVisualConfig
+#### Nova Rota
 
 ```typescript
-export interface QRVisualConfig {
-  // Cores (existente)
-  foreground: string;
-  background: string;
-  
-  // Posicionamento do QR (existente)
-  position: { x: number; y: number };
-  size: number;
-  rotation: number;
-  opacity: number;
-  
-  // Imagem de fundo (existente)
-  baseImageUrl?: string;
-  
-  // NOVO - Logo no centro do QR
-  centerLogoUrl?: string;
-  centerLogoSize?: number; // Percentual do tamanho do QR (10-40%)
-}
+// App.tsx
+<Route path="/my-avatar" element={<MyAvatar />} />
+```
 
-export const defaultQRVisualConfig: QRVisualConfig = {
-  foreground: "#7c3aed",
-  background: "#ffffff",
-  position: { x: 50, y: 50 },
-  size: 150,
-  rotation: 0,
-  opacity: 1,
-  centerLogoSize: 25, // 25% do QR por padrao
+#### Novo Arquivo: MyAvatar.tsx
+
+Pagina com dois modos:
+
+**Modo VIEW (padrao)**
+```text
++--------------------------------------------------+
+|  [<- Voltar]                   Meu Avatar 3D     |
++--------------------------------------------------+
+|                                                  |
+|         +------------------------+               |
+|         |                        |               |
+|         |   [Avatar 3D Preview]  |               |
+|         |     (rotacionavel)     |               |
+|         |                        |               |
+|         +------------------------+               |
+|                                                  |
+|         Nome do Usuario                          |
+|                                                  |
+|         Caracteristicas:                         |
+|         - Cabelo: Rabo de Cavalo, Castanho       |
+|         - Rosto: Coracao                         |
+|         - Expressao: Feliz                       |
+|         - Acessorios: Oculos, Chapeu             |
+|                                                  |
+|         [Editar Avatar]                          |
+|                                                  |
++--------------------------------------------------+
+```
+
+**Modo EDIT**
+- Reutiliza AvatarCustomizer existente
+- Botao "Salvar" e "Cancelar"
+- Preview em tempo real
+
+#### Logica de Estado
+
+```typescript
+const [mode, setMode] = useState<"view" | "edit">("view");
+const [originalConfig, setOriginalConfig] = useState<AvatarConfig | null>(null);
+
+// Ao clicar em "Editar"
+const handleStartEdit = () => {
+  setOriginalConfig({...avatarConfig}); // Salvar backup
+  setMode("edit");
+};
+
+// Ao clicar em "Cancelar"
+const handleCancelEdit = () => {
+  if (originalConfig) setAvatarConfig(originalConfig);
+  setMode("view");
+};
+```
+
+#### Atualizacao do Menu
+
+Mudar "Meu Avatar" para navegar para `/my-avatar` ao inves de `/create-avatar`
+
+---
+
+### Parte 3: Melhorias Visuais - Estilo Cartoon
+
+#### Conceito Visual
+
+Transformar avatares de "low-poly realista" para "cartoon estilizado":
+
+```text
+ANTES (atual):               DEPOIS (cartoon):
+    ___                          ____
+   /   \                        /    \
+  | . . |                      ( O  O )
+  |  >  |      -->             (  <>  )
+  | --- |                      ( \__/ )
+   \___/                        \____/
+                               
+Proporcoes realistas          Proporcoes exageradas
+Cores sutis                   Cores vibrantes
+Formas naturais               Formas arredondadas
+```
+
+#### Mudancas Especificas
+
+**1. Cabeca (HeadGeometry.tsx)**
+
+```typescript
+// ANTES: Cabeca proporcional
+<sphereGeometry args={[0.65, 32, 32]} />
+
+// DEPOIS: Cabeca maior e mais arredondada (estilo chibi/cartoon)
+<sphereGeometry args={[0.75, 32, 32]} />
+// Proporcao cabeca:corpo aumentada de 1:3 para 1:2
+```
+
+**2. Olhos (FacialFeatures.tsx)**
+
+```typescript
+// ANTES: Olhos pequenos e realistas
+<sphereGeometry args={[0.12, 16, 16]} />
+
+// DEPOIS: Olhos grandes e expressivos (estilo anime/cartoon)
+<sphereGeometry args={[0.18, 16, 16]} />
+// Pupilas maiores com brilho mais intenso
+// Adicionar "sparkle" (brilho estelar) nos olhos
+```
+
+**3. Corpo (Body.tsx)**
+
+```typescript
+// ANTES: Corpo proporcional
+position={[0, 0.45, 0]}
+
+// DEPOIS: Corpo menor em relacao a cabeca
+position={[0, 0.3, 0]}
+// Bracos mais curtos e arredondados
+// Maos como "luvas" estilo Mickey Mouse
+```
+
+**4. Materiais Cartoon**
+
+```typescript
+// Material com shader toon/cel-shading
+const cartoonMaterial = new THREE.MeshToonMaterial({
+  color: config.skinColor,
+  gradientMap: toonGradient, // 3 tons de cor
+});
+```
+
+**5. Outlines (Contornos)**
+
+Adicionar contornos pretos ao redor das formas para efeito cartoon:
+
+```typescript
+// Usando segunda mesh com escala ligeiramente maior
+<mesh scale={[1.02, 1.02, 1.02]}>
+  <sphereGeometry args={[0.75, 32, 32]} />
+  <meshBasicMaterial color="#000000" side={THREE.BackSide} />
+</mesh>
+```
+
+#### Proporcoes Cartoon
+
+| Parte | Antes | Depois |
+|-------|-------|--------|
+| Cabeca | 0.65 raio | 0.80 raio |
+| Olhos | 0.12 raio | 0.20 raio |
+| Corpo altura | 0.9 | 0.7 |
+| Maos | Esferas simples | Maos "luva" com 4 dedos visíveis |
+| Pescoco | 0.2 altura | 0.12 altura (mais curto) |
+
+#### Expressoes Mais Exageradas
+
+```typescript
+// Expressao feliz - sorriso maior
+const getMouthProps = () => {
+  switch (config.expression) {
+    case "happy":
+      return { 
+        type: "bigSmile", 
+        scale: 1.5,  // Sorriso 50% maior
+        showTeeth: true 
+      };
+    // ...
+  }
 };
 ```
 
 ---
 
-### Implementacao no QRCodeCanvas
+### Arquivos a Criar
 
-O componente `QRCodeSVG` do qrcode.react suporta a prop `imageSettings`:
+| Arquivo | Descricao |
+|---------|-----------|
+| `src/components/locations/LocationsManagementDialog.tsx` | Gerenciamento de locais |
+| `src/components/locations/LocationEditDialog.tsx` | Edicao de local individual |
+| `src/pages/MyAvatar.tsx` | Pagina de visualizacao/edicao de avatar |
 
-```typescript
-<QRCodeSVG
-  value={qrUrl}
-  size={config.size}
-  fgColor={config.foreground}
-  bgColor={config.background}
-  level="H" // Aumentar para "H" quando usar logo (mais redundancia)
-  includeMargin={false}
-  imageSettings={centerLogoUrl ? {
-    src: centerLogoUrl,
-    height: logoPixelSize,
-    width: logoPixelSize,
-    excavate: true, // Remove os pixels do QR atras do logo
-  } : undefined}
-/>
-```
+### Arquivos a Modificar
 
-**Nota importante:** Quando um logo e adicionado, o nivel de correcao de erro deve ser aumentado para "H" (High - 30%) para garantir que o QR continue escaneavel mesmo com o logo no centro.
+| Arquivo | Mudanca |
+|---------|---------|
+| `src/components/dashboard/DashboardHeader.tsx` | Adicionar "Meus Locais", mudar link do avatar |
+| `src/App.tsx` | Adicionar rota `/my-avatar` |
+| `src/hooks/useLocations.ts` | Ja tem updateLocation e deleteLocation (ok) |
+| `src/components/avatar/parts/HeadGeometry.tsx` | Proporcoes cartoon |
+| `src/components/avatar/parts/FacialFeatures.tsx` | Olhos maiores, expressoes exageradas |
+| `src/components/avatar/parts/Body.tsx` | Corpo menor, maos cartoon |
+| `src/components/avatar/parts/HairStyles.tsx` | Cabelos mais volumosos |
+| `src/components/avatar/AvatarModel.tsx` | Adicionar outline/contorno |
 
 ---
 
-### Nova Secao no QRCodeControls
-
-```text
-+------------------------------------------+
-|  Controles                               |
-+------------------------------------------+
-|                                          |
-|  Tamanho         [=========|---] 150px   |
-|  Opacidade       [=========|---] 100%    |
-|  Rotacao         [---|=========] 0°      |
-|                                          |
-|  -- Cores do QR Code --                  |
-|  [■] Codigo    [■] Fundo                 |
-|                                          |
-|  -- Imagem de Fundo --                   |  <-- Existente
-|  [Upload Imagem]                         |
-|  Imagem carregada ✓                      |
-|                                          |
-|  -- Logo Central --                      |  <-- NOVO
-|  [Upload Logo]  [Remover]                |
-|  [Preview do logo]                       |
-|  Tamanho: [====|------] 25%              |
-|                                          |
-|  [Baixar Imagem]                         |
-|  [Resetar]                               |
-+------------------------------------------+
-```
-
----
-
-### Detalhes Tecnicos
-
-#### 1. Prop imageSettings do qrcode.react
+### Detalhes Tecnicos - LocationsManagementDialog
 
 ```typescript
-interface ImageSettings {
-  src: string;        // URL ou base64 da imagem
-  x?: number;         // Posicao X (opcional, centraliza por padrao)
-  y?: number;         // Posicao Y (opcional, centraliza por padrao)
-  height: number;     // Altura em pixels
-  width: number;      // Largura em pixels
-  excavate?: boolean; // Remove pixels do QR sob a imagem
+interface LocationsManagementDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
+
+// Componente usa useLocations hook existente
+const { locations, updateLocation, deleteLocation, createLocation } = useLocations();
 ```
 
-#### 2. Calculo do tamanho do logo
+**Funcionalidades:**
+- Listar locais com ScrollArea para muitos itens
+- Editar inline ou em dialog separado
+- Excluir com AlertDialog de confirmacao
+- Mostrar badge com numero de lembretes vinculados
+
+---
+
+### Detalhes Tecnicos - MyAvatar Page
 
 ```typescript
-// Tamanho do logo em pixels baseado no percentual
-const logoPixelSize = Math.round(
-  (config.size * (config.centerLogoSize || 25)) / 100
-);
-```
-
-#### 3. Nivel de correcao de erro
-
-| Nivel | Redundancia | Uso |
-|-------|-------------|-----|
-| L (Low) | ~7% | QR sem logo |
-| M (Medium) | ~15% | Padrao atual |
-| Q (Quartile) | ~25% | Logo pequeno |
-| H (High) | ~30% | Logo grande (recomendado) |
-
-#### 4. Exportacao da imagem com logo
-
-Na funcao `exportAsImage`, o logo ja sera incluido automaticamente pois faz parte do SVG renderizado.
-
----
-
-### Interface do QRCodeControls Atualizada
-
-```typescript
-interface QRCodeControlsProps {
-  config: QRVisualConfig;
-  onChange: (updates: Partial<QRVisualConfig>) => void;
-  onUploadImage: (file: File) => void;        // Existente (fundo)
-  onUploadCenterLogo: (file: File) => void;   // NOVO
-  onRemoveCenterLogo: () => void;             // NOVO
-  onDownload: () => void;
-  onReset: () => void;
-  isDownloading?: boolean;
-  centerLogo: string | null;                  // NOVO
-}
-```
-
----
-
-### Validacoes e Limites
-
-1. **Tamanho do logo:** 10% a 40% do QR (evitar cobrir muito do codigo)
-2. **Formatos aceitos:** PNG, JPG, SVG (PNG com transparencia recomendado)
-3. **Tamanho do arquivo:** Limite de 500KB para evitar base64 muito grande
-4. **Proporcao:** Manter aspecto quadrado para melhor resultado
-
----
-
-### Fluxo do Usuario
-
-1. Usuario acessa personalizacao do QR
-2. Faz upload de imagem de fundo (opcional)
-3. Faz upload do logo central (nova opcao)
-4. Ajusta tamanho do logo (slider 10-40%)
-5. Visualiza preview em tempo real
-6. Salva ou faz download
-
----
-
-### Codigo da Secao "Logo Central" no Controls
-
-```typescript
-{/* Logo Central */}
-<div className="space-y-3">
-  <Label className="text-sm font-medium">Logo Central</Label>
+const MyAvatar = () => {
+  const { profile, isLoading } = useProfile();
+  const [mode, setMode] = useState<"view" | "edit">("view");
+  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   
-  {centerLogo ? (
-    <div className="space-y-3">
-      {/* Preview do logo */}
-      <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
-        <img
-          src={centerLogo}
-          alt="Logo"
-          className="w-12 h-12 object-contain rounded"
-        />
-        <div className="flex-1 text-xs text-muted-foreground">
-          Logo carregado
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onRemoveCenterLogo}
-        >
-          <X className="w-4 h-4" />
-        </Button>
-      </div>
-      
-      {/* Tamanho do logo */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs text-muted-foreground">Tamanho do Logo</Label>
-          <span className="text-xs text-muted-foreground">
-            {config.centerLogoSize || 25}%
-          </span>
-        </div>
-        <Slider
-          value={[config.centerLogoSize || 25]}
-          onValueChange={([value]) => onChange({ centerLogoSize: value })}
-          min={10}
-          max={40}
-          step={5}
-        />
-      </div>
-    </div>
+  // Carregar config do perfil
+  useEffect(() => {
+    if (profile?.avatar_config) {
+      setAvatarConfig(normalizeAvatarConfig(profile.avatar_config));
+    } else {
+      setAvatarConfig(getDefaultAvatarConfig());
+    }
+  }, [profile]);
+  
+  // Renderizar VIEW ou EDIT mode
+  return mode === "view" ? (
+    <AvatarViewMode config={avatarConfig} onEdit={() => setMode("edit")} />
   ) : (
-    <label className="flex-1">
-      <input
-        type="file"
-        accept="image/*"
-        onChange={handleLogoChange}
-        className="sr-only"
-      />
-      <Button variant="outline" className="w-full" asChild>
-        <span>
-          <ImagePlus className="w-4 h-4 mr-2" />
-          Adicionar Logo
-        </span>
-      </Button>
-    </label>
-  )}
-  
-  <p className="text-xs text-muted-foreground">
-    Adicione seu logo ou marca no centro do QR Code
-  </p>
-</div>
+    <AvatarEditMode 
+      config={avatarConfig} 
+      onChange={setAvatarConfig}
+      onSave={handleSave}
+      onCancel={() => setMode("view")}
+    />
+  );
+};
 ```
 
 ---
 
-### Resumo das Mudancas
+### Resumo de Mudancas
 
-| Componente | Mudanca |
-|------------|---------|
-| `QRVisualConfig` | +2 campos: `centerLogoUrl`, `centerLogoSize` |
-| `QRCodeCanvas` | Usar `imageSettings` e nivel "H" |
-| `QRCodeControls` | Nova secao de upload de logo |
-| `QRCodeVisualEditor` | Gerenciar estado `centerLogo` |
+#### Menu da Conta
+- Nova opcao "Meus Locais" no dropdown
+- Dialog para visualizar/editar/excluir locais
+- Link "Meu Avatar" agora vai para pagina de visualizacao
+
+#### Avatar
+- Nova pagina `/my-avatar` com modo VIEW primeiro
+- Usuario ve seu avatar antes de decidir editar
+- Mostra informacoes do avatar (cabelo, acessorios, etc.)
+- Botao "Editar" para entrar no modo de edicao
+
+#### Estilo Cartoon
+- Cabeca maior (proporcao chibi)
+- Olhos grandes e expressivos com brilho
+- Corpo menor e mais fofo
+- Contornos pretos para efeito cartoon
+- Cores mais vibrantes
+- Expressoes mais exageradas
+- Maos estilo luva de desenho animado
 
 ---
 
 ### Beneficios
 
-1. **Branding:** Usuarios podem adicionar sua marca ao QR
-2. **Profissionalismo:** QR codes mais atrativos e personalizados
-3. **Compatibilidade:** qrcode.react ja suporta nativamente
-4. **Escaneabilidade:** Nivel H garante leitura mesmo com logo
-
+1. **UX Melhorada** - Usuarios podem gerenciar locais sem sair do dashboard
+2. **Visualizacao Primeiro** - Ver avatar antes de editar previne edicoes acidentais
+3. **Estilo Atrativo** - Avatares cartoon sao mais cativantes e memoraveis
+4. **Consistencia** - Estilo cartoon combina melhor com a proposta ludica do app AR
