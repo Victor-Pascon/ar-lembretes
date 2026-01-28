@@ -10,19 +10,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, Settings, ChevronDown, MapPin } from "lucide-react";
+import { LogOut, User, Settings, ChevronDown, MapPin, BarChart3 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import type { Profile } from "@/hooks/useProfile";
 import logoArLembretes from "@/assets/logo-ar-lembretes.png";
 import { LocationsManagementDialog } from "@/components/locations/LocationsManagementDialog";
+import { SettingsDialog } from "@/components/settings/SettingsDialog";
 
 interface DashboardHeaderProps {
   profile: Profile | null;
+  onProfileUpdate?: () => void;
 }
 
-export function DashboardHeader({ profile }: DashboardHeaderProps) {
+export function DashboardHeader({ profile, onProfileUpdate }: DashboardHeaderProps) {
   const navigate = useNavigate();
   const [locationsDialogOpen, setLocationsDialogOpen] = useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -95,7 +98,11 @@ export function DashboardHeader({ profile }: DashboardHeaderProps) {
                 <MapPin className="w-4 h-4 mr-2" />
                 Meus Locais
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/analytics")}>
+                <BarChart3 className="w-4 h-4 mr-2" />
+                Analytics
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSettingsDialogOpen(true)}>
                 <Settings className="w-4 h-4 mr-2" />
                 Configurações
               </DropdownMenuItem>
@@ -112,6 +119,13 @@ export function DashboardHeader({ profile }: DashboardHeaderProps) {
       <LocationsManagementDialog
         open={locationsDialogOpen}
         onOpenChange={setLocationsDialogOpen}
+      />
+
+      <SettingsDialog
+        open={settingsDialogOpen}
+        onOpenChange={setSettingsDialogOpen}
+        profile={profile}
+        onProfileUpdate={onProfileUpdate || (() => {})}
       />
     </>
   );
