@@ -1,441 +1,347 @@
 
 
-## Configurações de Conta e Dashboard de Analytics
+## Controles Interativos no Modo AR
 
-### Visao Geral
+### Situacao Atual
 
-Este plano aborda duas funcionalidades principais:
+O avatar no AR tem:
+- Animacao de flutuacao automatica
+- Animacao de respiracao
+- Leve balanco lateral
 
-1. **Menu de Configurações** - Implementar dialog funcional para alterar nome, email e senha
-2. **Dashboard de Analytics** - Criar sistema de rastreamento de visitas aos QR Codes com gráficos
-
----
-
-### Parte 1: Menu de Configurações
-
-#### Problema Atual
-
-O botão "Configurações" no menu não possui um handler `onClick`, apenas renderiza o ícone e texto:
-
-```typescript
-// Linha 98-101 do DashboardHeader.tsx (atual)
-<DropdownMenuItem>
-  <Settings className="w-4 h-4 mr-2" />
-  Configurações
-</DropdownMenuItem>
-```
-
-#### Novo Componente: SettingsDialog
-
-Interface com abas para cada tipo de configuração:
-
-```text
-+--------------------------------------------------+
-|  Configurações da Conta                   [X]    |
-+--------------------------------------------------+
-|  [Perfil]  [Email]  [Senha]                      |
-+--------------------------------------------------+
-|                                                  |
-|  -- PERFIL (aba selecionada) --                  |
-|                                                  |
-|  Nome                                            |
-|  [João Victor Almeida Santos Pascon    ]         |
-|                                                  |
-|  [Salvar Alterações]                             |
-|                                                  |
-+--------------------------------------------------+
-```
-
-```text
-+--------------------------------------------------+
-|  Configurações da Conta                   [X]    |
-+--------------------------------------------------+
-|  [Perfil]  [Email]  [Senha]                      |
-+--------------------------------------------------+
-|                                                  |
-|  -- EMAIL (aba selecionada) --                   |
-|                                                  |
-|  Email atual: joaovpascon@gmail.com              |
-|                                                  |
-|  Novo Email                                      |
-|  [                                      ]        |
-|                                                  |
-|  Senha atual (confirmação)                       |
-|  [                                      ]        |
-|                                                  |
-|  [Alterar Email]                                 |
-|                                                  |
-|  ⚠️ Um email de confirmação será enviado         |
-|                                                  |
-+--------------------------------------------------+
-```
-
-```text
-+--------------------------------------------------+
-|  Configurações da Conta                   [X]    |
-+--------------------------------------------------+
-|  [Perfil]  [Email]  [Senha]                      |
-+--------------------------------------------------+
-|                                                  |
-|  -- SENHA (aba selecionada) --                   |
-|                                                  |
-|  Senha atual                                     |
-|  [••••••••                              ]        |
-|                                                  |
-|  Nova senha                                      |
-|  [                                      ]        |
-|  [Indicador de força da senha]                   |
-|                                                  |
-|  Confirmar nova senha                            |
-|  [                                      ]        |
-|                                                  |
-|  [Alterar Senha]                                 |
-|                                                  |
-+--------------------------------------------------+
-```
-
-#### Funcoes do Supabase Auth Utilizadas
-
-```typescript
-// Alterar nome (profiles table)
-const updateName = async (newName: string) => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado");
-  
-  const { error } = await supabase
-    .from("profiles")
-    .update({ name: newName })
-    .eq("user_id", user.id);
-    
-  if (error) throw error;
-};
-
-// Alterar email (necessita confirmação)
-const updateEmail = async (newEmail: string) => {
-  const { error } = await supabase.auth.updateUser({
-    email: newEmail,
-  });
-  if (error) throw error;
-  // Email de confirmação será enviado automaticamente
-};
-
-// Alterar senha
-const updatePassword = async (newPassword: string) => {
-  const { error } = await supabase.auth.updateUser({
-    password: newPassword,
-  });
-  if (error) throw error;
-};
-```
-
-#### Arquivos a Criar/Modificar
-
-| Arquivo | Mudança |
-|---------|---------|
-| `src/components/settings/SettingsDialog.tsx` | NOVO - Dialog principal com abas |
-| `src/components/settings/ProfileSettings.tsx` | NOVO - Aba de perfil (nome) |
-| `src/components/settings/EmailSettings.tsx` | NOVO - Aba de alteração de email |
-| `src/components/settings/PasswordSettings.tsx` | NOVO - Aba de alteração de senha |
-| `src/components/dashboard/DashboardHeader.tsx` | Adicionar onClick e state para SettingsDialog |
+Mas **NAO permite**:
+- Arrastar para mover
+- Gesto de pinça para ampliar/reduzir
+- Rotacao manual pelo usuario
 
 ---
 
-### Parte 2: Dashboard de Analytics
-
-#### Estrutura de Dados
-
-Criar nova tabela `qr_visits` para rastrear visualizações:
-
-```sql
-CREATE TABLE public.qr_visits (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  reminder_id UUID NOT NULL REFERENCES public.reminders(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL, -- Dono do QR (para RLS)
-  visited_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  view_mode TEXT, -- 'card' | 'ar' | 'select'
-  user_agent TEXT, -- Navegador/dispositivo
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- RLS para que donos vejam apenas suas visitas
-ALTER TABLE public.qr_visits ENABLE ROW LEVEL SECURITY;
-
--- Política de INSERT público (qualquer um pode registrar visita)
-CREATE POLICY "Anyone can insert visits"
-  ON public.qr_visits FOR INSERT
-  WITH CHECK (true);
-
--- Política de SELECT para donos
-CREATE POLICY "Users can view visits to their reminders"
-  ON public.qr_visits FOR SELECT
-  USING (auth.uid() = user_id);
-```
-
-#### Fluxo de Registro de Visitas
-
-Quando alguém acessa `/ar/:reminderId`:
-
-```typescript
-// Em ARPreview.tsx, após carregar o reminder:
-const logVisit = async (reminderId: string, userId: string, viewMode: string) => {
-  await supabase.from("qr_visits").insert({
-    reminder_id: reminderId,
-    user_id: userId, // ID do DONO do QR, não do visitante
-    view_mode: viewMode,
-    user_agent: navigator.userAgent,
-  });
-};
-```
-
-#### Nova Página: Analytics Dashboard
-
-Criar nova rota `/analytics` ou usar abas na página principal:
-
-```text
-+------------------------------------------------------------------+
-|  [Logo]  AR Lembretes                              [Menu Usuario] |
-+------------------------------------------------------------------+
-|                                                                  |
-|  [Meus Lembretes]  [Analytics]  <-- Toggle/Tabs                  |
-|                                                                  |
-+------------------------------------------------------------------+
-|                                                                  |
-|  Visão Geral dos QR Codes                                        |
-|                                                                  |
-|  +-------------+  +-------------+  +-------------+               |
-|  | Total de    |  | Visitas     |  | Média por   |               |
-|  | Visitas     |  | Este Mês    |  | QR Code     |               |
-|  |   247       |  |    89       |  |   12.3      |               |
-|  +-------------+  +-------------+  +-------------+               |
-|                                                                  |
-|  Visitas nos Últimos 30 Dias                                     |
-|  +----------------------------------------------------------+    |
-|  |     ^                                                    |    |
-|  |  25 |        ____                                        |    |
-|  |     |   ____/    \____                                   |    |
-|  |  15 |__/               \____        ____                 |    |
-|  |     |                       \______/    \____            |    |
-|  |   5 |                                        \____       |    |
-|  |     +---------------------------------------------->     |    |
-|  |       Jan 1   Jan 8   Jan 15   Jan 22   Jan 28          |    |
-|  +----------------------------------------------------------+    |
-|                                                                  |
-|  Estatísticas por QR Code                                        |
-|                                                                  |
-|  +----------------------------------------------------------+    |
-|  | QR Code           | Local      | Visitas | Última Visita |    |
-|  +-------------------+------------+---------+---------------+    |
-|  | Boas Vindas       | Modok Lab  |   45    | Há 2 horas    |    |
-|  | Limpar Cafeteira  | Cafeteira  |   32    | Há 5 minutos  |    |
-|  +----------------------------------------------------------+    |
-|                                                                  |
-|  [Ver Detalhes] para cada QR individual                          |
-|                                                                  |
-+------------------------------------------------------------------+
-```
-
-#### Modal de Detalhes por QR Code
+### Funcionalidades Propostas
 
 ```text
 +--------------------------------------------------+
-|  Estatísticas: Boas Vindas                [X]    |
-+--------------------------------------------------+
 |                                                  |
-|  Local: Modok Lab                                |
-|  Total de Visitas: 45                            |
+|   [X]                                    [i]     |
 |                                                  |
-|  Gráfico de Visitas (7 dias)                     |
-|  +--------------------------------------------+  |
-|  |     _____                                  |  |
-|  |    /     \                                 |  |
-|  | __/       \_____          _____            |  |
-|  |                  \________/                |  |
-|  +--------------------------------------------+  |
 |                                                  |
-|  Modo de Visualização                            |
-|  +--------------------------------------------+  |
-|  |  [====== Card 60% ======]                  |  |
-|  |  [=== AR 40% ===]                          |  |
-|  +--------------------------------------------+  |
+|           +------------------+                   |
+|           |                  |                   |
+|           |   [Avatar 3D]    |  <-- Arrastar     |
+|           |                  |      para mover   |
+|           +------------------+                   |
 |                                                  |
-|  Dispositivos                                    |
-|  • Mobile: 78%                                   |
-|  • Desktop: 22%                                  |
+|   Gestos disponiveis:                            |
+|   - 1 dedo: Arrastar avatar                      |
+|   - 2 dedos (pinça): Zoom in/out                 |
+|   - 2 dedos (girar): Rotacionar avatar           |
 |                                                  |
+|   +------------------------------------------+   |
+|   |  [-]  [====|=====]  [+]   Tamanho        |   |
+|   +------------------------------------------+   |
+|                                                  |
+|   [Resetar Posicao]                              |
+|                                                  |
+|         🎯 Experiência AR ativa                  |
 +--------------------------------------------------+
 ```
 
-#### Hook useAnalytics
+---
+
+### Interacoes por Gestos (Touch)
+
+| Gesto | Acao | Descricao |
+|-------|------|-----------|
+| 1 dedo arrastar | Mover | Move o avatar na tela (X/Y) |
+| Pinça (2 dedos) | Zoom | Amplia ou reduz o avatar |
+| Rotacao (2 dedos) | Girar | Rotaciona o avatar no eixo Y |
+| Toque duplo | Reset | Volta posicao/tamanho original |
+
+---
+
+### Implementacao Tecnica
+
+#### 1. Estado de Transformacao
 
 ```typescript
-interface VisitStats {
-  totalVisits: number;
-  visitsThisMonth: number;
-  avgPerQR: number;
-  visitsByDay: { date: string; count: number }[];
-  visitsByQR: {
-    reminderId: string;
-    title: string;
-    location: string | null;
-    totalVisits: number;
-    lastVisit: string | null;
-  }[];
+interface AvatarTransform {
+  position: { x: number; y: number; z: number };
+  rotation: number; // Eixo Y
+  scale: number;
 }
 
-export function useAnalytics() {
-  const [stats, setStats] = useState<VisitStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+const [transform, setTransform] = useState<AvatarTransform>({
+  position: { x: 0, y: 0, z: 0 },
+  rotation: 0,
+  scale: 1,
+});
+```
 
-  const fetchStats = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+#### 2. Controles da Biblioteca Drei
 
-    // Buscar todas as visitas do usuário
-    const { data: visits } = await supabase
-      .from("qr_visits")
-      .select(`
-        *,
-        reminders (
-          id,
-          title,
-          locations (name)
-        )
-      `)
-      .eq("user_id", user.id)
-      .order("visited_at", { ascending: false });
+Usar `OrbitControls` ou gestos customizados:
 
-    // Processar dados para estatísticas
-    // ...
+```typescript
+import { OrbitControls } from "@react-three/drei";
+
+// Dentro do Canvas
+<OrbitControls
+  enablePan={true}      // Arrastar
+  enableZoom={true}     // Pinça
+  enableRotate={true}   // Rotacao
+  minDistance={2}       // Zoom minimo
+  maxDistance={10}      // Zoom maximo
+  target={[0, 1, 0]}    // Ponto focal no avatar
+/>
+```
+
+#### 3. Controles Customizados (Alternativa)
+
+Para mais controle sobre os gestos:
+
+```typescript
+// Hook customizado para gestos touch
+const useAvatarGestures = () => {
+  const [isDragging, setIsDragging] = useState(false);
+  const [lastTouch, setLastTouch] = useState<Touch | null>(null);
+  const [initialPinchDistance, setInitialPinchDistance] = useState<number | null>(null);
+
+  const handleTouchStart = (e: TouchEvent) => {
+    if (e.touches.length === 1) {
+      setIsDragging(true);
+      setLastTouch(e.touches[0]);
+    } else if (e.touches.length === 2) {
+      // Pinch start
+      const distance = getDistance(e.touches[0], e.touches[1]);
+      setInitialPinchDistance(distance);
+    }
   };
 
-  return { stats, isLoading, refetch: fetchStats };
-}
+  const handleTouchMove = (e: TouchEvent) => {
+    if (e.touches.length === 1 && isDragging && lastTouch) {
+      // Drag - mover avatar
+      const deltaX = (e.touches[0].clientX - lastTouch.clientX) * 0.01;
+      const deltaY = (e.touches[0].clientY - lastTouch.clientY) * -0.01;
+      setTransform(prev => ({
+        ...prev,
+        position: {
+          x: prev.position.x + deltaX,
+          y: prev.position.y + deltaY,
+          z: prev.position.z,
+        }
+      }));
+      setLastTouch(e.touches[0]);
+    } else if (e.touches.length === 2 && initialPinchDistance) {
+      // Pinch - zoom
+      const currentDistance = getDistance(e.touches[0], e.touches[1]);
+      const scaleFactor = currentDistance / initialPinchDistance;
+      setTransform(prev => ({
+        ...prev,
+        scale: Math.max(0.5, Math.min(2, prev.scale * scaleFactor))
+      }));
+    }
+  };
+
+  return { handleTouchStart, handleTouchMove, handleTouchEnd };
+};
 ```
 
-#### Arquivos a Criar
+---
 
-| Arquivo | Descrição |
-|---------|-----------|
-| `src/pages/Analytics.tsx` | Página principal de analytics |
-| `src/hooks/useAnalytics.ts` | Hook para buscar e processar dados |
-| `src/components/analytics/OverviewStats.tsx` | Cards com totais |
-| `src/components/analytics/VisitsChart.tsx` | Gráfico de linha (recharts) |
-| `src/components/analytics/QRCodeTable.tsx` | Tabela com stats por QR |
-| `src/components/analytics/QRDetailDialog.tsx` | Modal com detalhes |
+### UI de Controles Opcionais
 
-#### Arquivos a Modificar
+Adicionar botoes para usuarios que preferem controles visuais:
 
-| Arquivo | Mudança |
+```text
++--------------------------------------------------+
+|                                                  |
+|  Controles (opcao visual):                       |
+|                                                  |
+|  Tamanho:  [-]  [========|===]  [+]              |
+|                                                  |
+|  Rotacao:  [<]  [=====|======]  [>]              |
+|                                                  |
+|  [Resetar]                                       |
+|                                                  |
++--------------------------------------------------+
+```
+
+---
+
+### Arquivos a Modificar
+
+| Arquivo | Mudanca |
 |---------|---------|
-| `src/pages/ARPreview.tsx` | Adicionar logVisit() ao carregar QR |
-| `src/pages/Index.tsx` | Adicionar tabs ou link para Analytics |
-| `src/App.tsx` | Adicionar rota `/analytics` |
-| `src/components/dashboard/DashboardHeader.tsx` | Adicionar link Dashboard no menu |
+| `src/components/ar/ARCameraView.tsx` | Adicionar OrbitControls e estado de transform |
+| `src/components/ar/ARAvatarWithSign.tsx` | Receber props de transform e aplicar |
+| `src/components/ar/ARControlsOverlay.tsx` | NOVO - Controles visuais opcionais |
 
 ---
 
-### Migração de Banco de Dados
-
-```sql
--- Criar tabela de visitas
-CREATE TABLE public.qr_visits (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  reminder_id UUID NOT NULL REFERENCES public.reminders(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL,
-  visited_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  view_mode TEXT CHECK (view_mode IN ('select', 'card', 'ar')),
-  user_agent TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Índices para performance
-CREATE INDEX idx_qr_visits_reminder_id ON public.qr_visits(reminder_id);
-CREATE INDEX idx_qr_visits_user_id ON public.qr_visits(user_id);
-CREATE INDEX idx_qr_visits_visited_at ON public.qr_visits(visited_at);
-
--- Habilitar RLS
-ALTER TABLE public.qr_visits ENABLE ROW LEVEL SECURITY;
-
--- Política de INSERT (público - visitantes anônimos podem registrar)
-CREATE POLICY "Anyone can insert visits"
-  ON public.qr_visits FOR INSERT
-  WITH CHECK (true);
-
--- Política de SELECT (apenas donos veem suas visitas)
-CREATE POLICY "Users can view visits to their reminders"
-  ON public.qr_visits FOR SELECT
-  USING (auth.uid() = user_id);
-```
-
----
-
-### Gráficos com Recharts
-
-Usar a biblioteca recharts já instalada:
+### Mudancas no ARCameraView.tsx
 
 ```typescript
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { OrbitControls } from "@react-three/drei";
 
-// Dados processados
-const chartData = [
-  { date: "Jan 22", visits: 12 },
-  { date: "Jan 23", visits: 8 },
-  { date: "Jan 24", visits: 15 },
-  // ...
-];
+// Novo estado
+const [avatarScale, setAvatarScale] = useState(1);
+const [showControls, setShowControls] = useState(false);
 
-// Componente
-<ResponsiveContainer width="100%" height={300}>
-  <LineChart data={chartData}>
-    <XAxis dataKey="date" />
-    <YAxis />
-    <Tooltip />
-    <Line 
-      type="monotone" 
-      dataKey="visits" 
-      stroke="#7c3aed" 
-      strokeWidth={2}
-    />
-  </LineChart>
-</ResponsiveContainer>
+// No Canvas
+<Canvas ...>
+  <OrbitControls
+    enablePan={true}
+    enableZoom={true}
+    enableRotate={true}
+    minDistance={3}
+    maxDistance={8}
+    target={[0, 1, 0]}
+    maxPolarAngle={Math.PI / 1.5}
+    minPolarAngle={Math.PI / 4}
+  />
+  
+  <ARAvatarWithSign 
+    config={avatarConfig} 
+    message={message}
+    scale={avatarScale}
+  />
+</Canvas>
 ```
 
 ---
 
-### Resumo das Mudanças
+### Mudancas no ARAvatarWithSign.tsx
 
-#### Configurações (Parte 1)
+```typescript
+interface ARAvatarWithSignProps {
+  config: AvatarConfig;
+  message: string;
+  scale?: number;          // NOVO
+  userRotation?: number;   // NOVO
+}
 
-| Tipo | Arquivo |
-|------|---------|
-| NOVO | `src/components/settings/SettingsDialog.tsx` |
-| NOVO | `src/components/settings/ProfileSettings.tsx` |
-| NOVO | `src/components/settings/EmailSettings.tsx` |
-| NOVO | `src/components/settings/PasswordSettings.tsx` |
-| MOD | `src/components/dashboard/DashboardHeader.tsx` |
-
-#### Analytics (Parte 2)
-
-| Tipo | Arquivo |
-|------|---------|
-| NOVO | `src/pages/Analytics.tsx` |
-| NOVO | `src/hooks/useAnalytics.ts` |
-| NOVO | `src/components/analytics/OverviewStats.tsx` |
-| NOVO | `src/components/analytics/VisitsChart.tsx` |
-| NOVO | `src/components/analytics/QRCodeTable.tsx` |
-| NOVO | `src/components/analytics/QRDetailDialog.tsx` |
-| MOD | `src/pages/ARPreview.tsx` - log de visitas |
-| MOD | `src/pages/Index.tsx` - tabs/link |
-| MOD | `src/App.tsx` - rota /analytics |
-| MOD | `src/components/dashboard/DashboardHeader.tsx` - menu |
-| DB | Criar tabela `qr_visits` + RLS |
+// Aplicar transformacoes
+<group 
+  ref={groupRef} 
+  position={[0, 0, 0]}
+  scale={scale || 1}
+>
+  {/* Conteudo do avatar */}
+</group>
+```
 
 ---
 
-### Benefícios
+### Novo Componente: ARControlsOverlay.tsx
 
-1. **Configurações Funcionais** - Usuários podem atualizar seus dados de conta
-2. **Insights de Uso** - Donos de QR Codes sabem quantas pessoas acessaram
-3. **Decisões Baseadas em Dados** - Identificar QR Codes mais/menos populares
-4. **Segurança** - Visitantes são anônimos, apenas totais são mostrados
+Controles visuais na parte inferior da tela:
+
+```typescript
+interface ARControlsOverlayProps {
+  scale: number;
+  onScaleChange: (scale: number) => void;
+  onReset: () => void;
+}
+
+const ARControlsOverlay = ({ scale, onScaleChange, onReset }: ARControlsOverlayProps) => {
+  return (
+    <div className="absolute bottom-20 inset-x-0 px-4">
+      <div className="bg-background/80 backdrop-blur-sm rounded-2xl p-4 space-y-3">
+        {/* Slider de tamanho */}
+        <div className="flex items-center gap-3">
+          <Button 
+            size="icon" 
+            variant="ghost"
+            onClick={() => onScaleChange(Math.max(0.5, scale - 0.1))}
+          >
+            <Minus className="w-4 h-4" />
+          </Button>
+          
+          <Slider
+            value={[scale]}
+            onValueChange={([v]) => onScaleChange(v)}
+            min={0.5}
+            max={2}
+            step={0.1}
+            className="flex-1"
+          />
+          
+          <Button 
+            size="icon" 
+            variant="ghost"
+            onClick={() => onScaleChange(Math.min(2, scale + 0.1))}
+          >
+            <Plus className="w-4 h-4" />
+          </Button>
+        </div>
+        
+        {/* Botao de reset */}
+        <Button 
+          variant="outline" 
+          className="w-full"
+          onClick={onReset}
+        >
+          <RotateCcw className="w-4 h-4 mr-2" />
+          Resetar Posicao
+        </Button>
+      </div>
+    </div>
+  );
+};
+```
+
+---
+
+### Indicador de Gestos (Primeira Vez)
+
+Mostrar dicas na primeira vez que o usuario acessa:
+
+```text
++--------------------------------------------------+
+|                                                  |
+|        +----------------------------+            |
+|        |  👆 Arraste para mover     |            |
+|        |                            |            |
+|        |  🤏 Pinça para zoom        |            |
+|        |                            |            |
+|        |  👉👈 Gire com 2 dedos     |            |
+|        |                            |            |
+|        |      [Entendi!]            |            |
+|        +----------------------------+            |
+|                                                  |
++--------------------------------------------------+
+```
+
+---
+
+### Limites de Transformacao
+
+Para evitar que o usuario "perca" o avatar:
+
+| Propriedade | Minimo | Maximo |
+|-------------|--------|--------|
+| Scale | 0.5x | 2.0x |
+| Posicao X | -3 | +3 |
+| Posicao Y | -1 | +3 |
+| Rotacao Y | -180° | +180° |
+| Distancia Camera | 3 | 8 |
+
+---
+
+### Resumo das Mudancas
+
+| Tipo | Arquivo | Mudanca |
+|------|---------|---------|
+| MOD | `ARCameraView.tsx` | Adicionar OrbitControls, estado de scale, botao de controles |
+| MOD | `ARAvatarWithSign.tsx` | Adicionar props scale e userRotation |
+| NOVO | `ARControlsOverlay.tsx` | Painel de controles visuais |
+| NOVO | `ARGestureHint.tsx` | Modal de dicas de gestos (opcional) |
+
+---
+
+### Beneficios
+
+1. **Experiencia Imersiva** - Usuario posiciona avatar onde quiser no ambiente
+2. **Fotos Melhores** - Ajustar tamanho/posicao para tirar screenshots
+3. **Acessibilidade** - Controles visuais para quem prefere botoes
+4. **Intuitividade** - Gestos naturais de smartphone (arrastar, pincar)
 
